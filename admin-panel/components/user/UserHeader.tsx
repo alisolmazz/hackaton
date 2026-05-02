@@ -1,9 +1,9 @@
 'use client';
 
 import React from 'react';
-import { Menu, Bell, Moon, Sun } from 'lucide-react';
+import { Menu, Moon, Sun } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
+import { BildirimDropdown } from '@/components/user/BildirimDropdown';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -61,10 +61,7 @@ export function UserHeader() {
         </Button>
 
         {/* Bildirimler */}
-        <Button variant="ghost" size="icon" className="relative text-slate-500 hover:text-teal-700">
-          <Bell className="h-5 w-5" />
-          <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white dark:border-slate-900 animate-pulse"></span>
-        </Button>
+        <BildirimDropdown />
 
         {/* Avatar Dropdown */}
         <DropdownMenu>

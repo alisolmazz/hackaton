@@ -1,64 +1,164 @@
 # BSMT Hackathon - Pro Sicht Fintech Platformu
 # Proje Güncel Durum ve Yapı Özeti
+# Son Güncelleme: 02.05.2026 20:20
 
 ## 1. Proje Özeti
 Pro Sicht İş Birliği ile geliştirilen, finansal danışmanlık sektörü için yapay zeka (AI) destekli, çok katmanlı bir web/mobil finans yönetim platformudur. İki ana kullanıcı kitlesi (Yönetici/Admin ve Son Kullanıcı/Şirket Yetkilisi) bulunur. 
 
 ## 2. Teknoloji Yığını (Tech Stack)
-- **Admin Paneli:** Next.js 14 (App Router), TypeScript, Tailwind CSS, shadcn/ui, Recharts, @tanstack/react-query, axios, react-hook-form + zod, next-themes, sonner, lucide-react, @supabase/supabase-js.
-- **Kullanıcı Paneli:** Flutter (Mobil ve Web) - (Geliştirilecek)
+- **Admin Paneli:** Next.js 14 (App Router), TypeScript, Tailwind CSS, shadcn/ui, Recharts, @tanstack/react-query, axios, react-hook-form + zod, next-themes, sonner, lucide-react, @supabase/supabase-js, date-fns.
+- **Kullanıcı Paneli:** Aynı Next.js projesi içerisinde ayrı layout ile (app/(user)). Admin'den farklı koyu yeşil/teal tema.
 - **Backend:** FastAPI (Python) - (Geliştirilecek)
 - **Veritabanı ve Auth:** Supabase (PostgreSQL, JWT)
 - **AI Entegrasyonları:** OCR, LLM analiz, python-pptx.
 
-## 3. Sistem Mimarisi ve Veritabanı
-- **Admin Paneli:** Firma ve finansal verilerin tam yönetimi, AI analiz tetikleme, uzman görüşü ve sözleşme/abonelik yönetimi.
-- **Kullanıcı Paneli:** Kısıtlı görünüm; sadece kendi firmalarının finansal raporları, tahsilat vb.
+## 3. Sistem Mimarisi
+- **Admin Paneli (app/(admin)):** Firma ve finansal verilerin tam yönetimi, AI analiz tetikleme, uzman görüşü, sözleşme/abonelik yönetimi, premium talep onaylama, sistem logları.
+- **Kullanıcı Paneli (app/(user)):** Kısıtlı görünüm; sadece kendi firmalarının finansal raporları, tahsilat, nakit akışı, borç/alacak. Premium kilitli alanlar mevcut.
+- **Auth (app/(auth)):** Login (admin+user ortak) + Register (kullanıcı kaydı).
+- **Middleware:** JWT rol bazlı yönlendirme (admin → /dashboard, user → /user/dashboard).
 
 ## 4. Yapılan İşlemler (Log)
+
+### 4.1 Admin Paneli (Tamamlandı)
 - [02.05.2026] Proje gereksinimleri (BSMT_Hackathon_Fintech_Raporu.pdf) ve geliştirme planı (BSMT_Hackathon_Plan.md) okundu. Projenin genel bağlamı kavrandı.
 - [02.05.2026] **Admin Paneli Altyapısı Kuruldu:** Next.js 14 projesi oluşturuldu. İstenen paketler (shadcn/ui, supabase, recharts, react-query vb.) projeye dahil edildi.
 - [02.05.2026] **Admin Paneli Klasör Yapısı:** İstenilen tam klasör dizilimi (app/(auth), app/(admin), components/layout, components/firma vb.) oluşturuldu. 
-- [02.05.2026] `.env.local` ve `next.config.ts` (API Proxy ve Image ayarları) dosyaları yapılandırıldı. `src` dizininden çıkılarak `app/` kök dizine alındı.
-- [02.05.2026] **Core Lib & Types:** `types/index.ts` ile tüm arayüzler ve tipler (Firma, User, FinansalRapor vb.) tanımlandı. `lib/api.ts` içerisinde Axios interceptor'ları (401/403 handle, token header) ve endpoint'ler yazıldı. `lib/auth.ts` ile JWT decode, login, logout fonksiyonları oluşturuldu. `lib/supabase.ts` ayarlandı.
-- [02.05.2026] **Middleware & Auth Koruması:** `middleware.ts` oluşturularak token bazlı sayfa yönlendirmeleri (root -> /dashboard, korumalı sayfalara izinsiz erişim engellemesi vb.) eklendi.
-- [02.05.2026] **Layout & Navigasyon:** `app/(admin)/layout.tsx` dosyası ThemeProvider ve QueryClientProvider ile sarmalandı. Responsive Sidebar ve Header bileşenleri tasarlandı. Dark mode, avatar dropdown ve mobil sheet menü özellikleri entegre edildi.
-- [02.05.2026] **Login Ekranı:** `app/(auth)/login/page.tsx` sayfası react-hook-form ve Zod validasyonu ile tasarlandı.
-- [02.05.2026] **Dashboard & Firmalar Listesi:** `app/(admin)/dashboard/page.tsx` ve `app/(admin)/firmalar/page.tsx` geliştirildi. React-Query hook'ları (useFirmalar vb.) eklendi. Pagination, filtreleme ve Recharts ile grafik entegrasyonu tamamlandı.
-- [02.05.2026] **Firma Formu & Detay Yönetimi:** AI destekli OCR form bileşeni `components/firma/FirmaForm.tsx` (Zod, React-Hook-Form) yazıldı. `app/(admin)/firmalar/[id]/page.tsx` içerisine Tabs (Firma Bilgileri, Rapor, Durum, Sunum) entegre edildi. Inline düzenleme ve Onay/Sil aksiyonları bağlandı.
-- [02.05.2026] **Finansal Rapor & AI Analiz:** `app/(admin)/finansal-rapor/[firma_id]/page.tsx` geliştirildi. React-Hook-Form (Nakit Akış listeleri), Recharts grafikleri, AI Analiz markdown çıktısı (`react-markdown`), Bankalar ve Tahsilatlar alt modülleri entegre edildi. Unsaved changes warning aktif edildi.
-- [02.05.2026] **Finansal Durum Özeti Paneli:** `app/(admin)/finansal-durum/[firma_id]/page.tsx` oluşturuldu. Accordion destekli tahsilat listesi, Recharts AreaChart nakit akışı, Banka ve Proje kartları, Oran analizleri tabloları eklendi.
-- [02.05.2026] **Yatırım Portföy Paneli:** `app/(admin)/yatirim/[firma_id]/page.tsx` sayfası eklendi. Gradient kartlar, Recharts Sparkline mini-grafikler, sektörel dağılım pastası, benchmark line chart ve AI destekli Risk Haritası tasarlandı. Modal içinde form validasyonu yapıldı.
-- [02.05.2026] **PowerPoint Ön Sunum Üretici:** `app/(admin)/on-sunum/[firma_id]/page.tsx` eklendi. Multi-step progress bar simülasyonu, CSS wireframe önizleme paneli, tema renk seçici, checkbox slayt seçimi ve Blob tabanlı .pptx indirme fonksiyonu kodlandı.
-- [02.05.2026] **İç Süreç Yönetimi (Firmalarımız & Sözleşmeler):** `app/(admin)/firmalarimiz/page.tsx` 4 sekmeli (Sözleşmeler, Abonelik, Finansal, Tahsilat) yapıyla kuruldu. Bitiş tarihi yaklaşan sözleşmeler için `date-fns` ile kalan gün hesabı yapıldı. `app/(admin)/sozlesmeler/page.tsx` sayfası bağımsız liste ve ekleme modalıyla entegre edildi.
-- [02.05.2026] **Premium Talepler Yönetimi:** `app/(admin)/premium-talepler/page.tsx` oluşturuldu. Onayla (`AlertDialog`) ve Reddet (`Dialog`) iş akışları, sağdan açılan `Sheet` detay paneli, optimistic update simülasyonu ve filtreleme sistemleri tamamlandı.
-- [02.05.2026] **Sistem Logları Sayfası:** `app/(admin)/loglar/page.tsx` eklendi. URL param tabanlı pagination, Update JSON diff görüntüleyici (`Sheet`), AI çağrı süreleri LineChart analizi ve HTTP hata Stack Trace modalı kurgulandı.
-- [02.05.2026] **Kullanıcı Paneli Altyapısı:** `middleware.ts` rol bazlı yönlendirmeye güncellendi. `app/(auth)/register/page.tsx` (Zod validasyonlu kayıt formu), `app/(user)/layout.tsx`, `UserSidebar.tsx` (teal tema), `UserHeader.tsx`, `PremiumKarti.tsx`, `KisitliAlan.tsx`, `OnayBekleniyor.tsx` bileşenleri ve 6 kullanıcı sayfası (dashboard, firma-bilgileri, finansal-rapor, nakit-akis, borc-alacak, profil) oluşturuldu.
+- [02.05.2026] `.env.local` ve `next.config.ts` (API Proxy ve Image ayarları) dosyaları yapılandırıldı.
+- [02.05.2026] **Core Lib & Types:** `types/index.ts` ile tüm arayüzler ve tipler tanımlandı. `lib/api.ts` içerisinde Axios interceptor'ları ve endpoint'ler yazıldı. `lib/auth.ts` ile JWT decode, login, logout fonksiyonları oluşturuldu.
+- [02.05.2026] **Middleware & Auth Koruması:** `middleware.ts` oluşturularak token bazlı sayfa yönlendirmeleri eklendi.
+- [02.05.2026] **Layout & Navigasyon:** Admin layout ThemeProvider ve QueryClientProvider ile sarmalandı. Sidebar, Header, Dark mode, avatar dropdown ve mobil sheet menü.
+- [02.05.2026] **Login Ekranı:** react-hook-form + Zod validasyonu ile tasarlandı.
+- [02.05.2026] **Dashboard & Firmalar:** React-Query hook'ları, Pagination, filtreleme ve Recharts grafik entegrasyonu.
+- [02.05.2026] **Firma Formu & Detay:** AI destekli OCR form bileşeni, Tabs yapısı, inline düzenleme.
+- [02.05.2026] **Finansal Rapor & AI Analiz:** Nakit Akış listeleri, Recharts grafikleri, AI Analiz markdown, Bankalar ve Tahsilatlar.
+- [02.05.2026] **Finansal Durum Özeti:** Accordion tahsilat, AreaChart nakit akışı, Banka ve Proje kartları.
+- [02.05.2026] **Yatırım Portföy Paneli:** Gradient kartlar, Sparkline mini-grafikler, sektörel dağılım pastası, AI Risk Haritası.
+- [02.05.2026] **PowerPoint Ön Sunum:** Multi-step progress bar, CSS wireframe önizleme, tema renk seçici, Blob .pptx indirme.
+- [02.05.2026] **Firmalarımız & Sözleşmeler:** 4 sekmeli yapı (Sözleşmeler, Abonelik, Finansal, Tahsilat), date-fns kalan gün hesabı.
+- [02.05.2026] **Premium Talepler Yönetimi:** Onayla/Reddet iş akışları, Sheet detay paneli, optimistic update.
+- [02.05.2026] **Sistem Logları:** URL param tabanlı pagination, JSON diff görüntüleyici, AI çağrı LineChart, HTTP hata Stack Trace.
 
+### 4.2 Kullanıcı Paneli (Devam Ediyor)
 
+#### 4.2.1 Altyapı & Routing
+- [02.05.2026] **middleware.ts güncellendi:** JWT payload içinden `role` okunarak admin/user yönlendirmesi yapıldı. Admin rotaları (/dashboard, /firmalar vb.) role=admin gerektirir, user rotaları (/user/*) token gerektirir. Login/register sayfalarında token varsa rol bazlı redirect yapılır.
+- [02.05.2026] **Kayıt Sayfası (app/(auth)/register/page.tsx):** Teal temalı split-screen layout. Sol panel: branding ("Finansal Raporlarınızı Hemen Analiz Edin"), sağ panel: Zod validasyonlu form (firma ünvanı, ad soyad, email, şifre+tekrar). Başarılı kayıt sonrası sarı toast "Kaydınız alındı. Admin onayı bekleniyor." ve /login'e yönlendirme.
 
+#### 4.2.2 Layout & Ortak Bileşenler
+- [02.05.2026] **app/(user)/layout.tsx:** UserSidebar + UserHeader + PremiumModalProvider wrapper. Admin layout'tan tamamen bağımsız, koyu yeşil/teal (#0f4c3a) tema.
+- [02.05.2026] **UserSidebar.tsx:** 3 gruplu menü yapısı (Genel/Firmam/Hesap). Firma adı logo altında gösterilir. "AI Analiz" ve "Uzman Görüşü" menü öğeleri kilit ikonuyla soluk gösterilir, tıklayınca Tooltip + PremiumModal açılır. Alt footer: avatar + email + çıkış butonu. Global PremiumModal context'e bağlı.
+- [02.05.2026] **UserHeader.tsx:** Dinamik sayfa başlığı (URL'ye göre), Dark mode toggle (next-themes), bildirim ikonu (animasyonlu kırmızı nokta), Avatar dropdown menü.
+- [02.05.2026] **PremiumModal.tsx + context/PremiumModalContext.tsx:** React Context API ile global erişim. `usePremiumModal()` hook'u ile herhangi bir sayfadan `openModal('premium_bundle')` çağrılabilir. 3 paket kartı (Temel Analiz/mavi, Uzman Görüşü/mor, Premium Bundle/altın+"En Popüler" badge). Kart seçim mekanizması (ring + checkmark). 3 durum yönetimi: yok→paket seçimi, bekliyor→inceleniyor mesajı, onaylandi→erişim aktif mesajı. Talep gönderme simülasyonu + success toast.
+- [02.05.2026] **KisitliAlan.tsx:** Props: ozellikAdi, paketAdi, aciklama, ozellikler[]. İçeriği blur ile gösterir, üzerine kilit ikonu + özellik listesi + gradient "Paketi Satın Al" butonu koyar. Premium gerektiren bölümlerde kullanılır.
+- [02.05.2026] **OnayBekleniyor.tsx:** Tam sayfa ortalanmış bileşen. Animasyonlu çift halkalı Hourglass (ping+pulse). "Genellikle 24 saat içinde onaylanır" bilgi kutusu. admin@prosicht.com iletişim linki. "Firma Bilgilerimi Güncelle" butonu.
+- [02.05.2026] **PremiumKarti.tsx:** Altın gradient'li CTA kartı, CheckCircle özellik listesi, "Premium Talep Et" butonu.
 
+#### 4.2.3 Sayfalar
 
+- [02.05.2026] **Dashboard (app/(user)/dashboard/page.tsx):**
+  - Onay kontrol mekanizması: firmaOnaylandi===false ise OnayBekleniyor, true ise dashboard gösterilir.
+  - 4 metrik kart: Toplam Alacak (kırmızı), Bu Ay Tahsilat (yeşil), Aktif Proje (mavi), Paketim (amber).
+  - 4 hızlı erişim kartı (Link ile sarılı, hover efektli): Finansal Rapor, Nakit Akışı, Firma Bilgileri, Premium'a Geç.
+  - Recharts BarChart: Gelir vs Gider (son 6 ay).
+  - Son 5 tahsilat aktivitesi listesi (durum badge'leriyle).
+  - Premium Banner: Paket yoksa turuncu-kırmızı gradient CTA "AI Finansal Analiz özelliğine erişin".
 
+- [02.05.2026] **Firma Bilgileri (app/(user)/firma-bilgileri/page.tsx):**
+  - 3 durumlu sayfa: yok (ilk kayıt formu), bekliyor (sarı banner + form), onaylandi (yeşil banner + form + sözleşme kartı).
+  - OCR Belge Tarama: Drag & drop alanı, dosya bırakıldığında Progress bar ile AI analiz simülasyonu, başarılı sonrası form alanları otomatik dolup "AI ile dolduruldu" badge'i belirir.
+  - Zod Validasyonlu Form: Firma ünvanı, vergi no (10 hane regex), ticaret sicil, kuruluş tarihi, faaliyet alanı, yetkili kişi, telefon, email (disabled), adres, yıllık ciro.
+  - Sözleşme Bilgileri Paneli (readonly): Sadece onaylı firmada görünür. Sözleşme türü badge, dönem, bedel (göster/gizle toggle). "Sadece Admin Değiştirebilir" kilit badge'i.
 
+- [02.05.2026] **Finansal Rapor (app/(user)/finansal-rapor/page.tsx):**
+  - 6 sekmeli (Tab): Mali Veriler, Bankalarım, Tahsilatlarım, Projelerim, AI Analiz (kilitli), Uzman Görüşü (kilitli).
+  - Mali Veriler: 4 metrik kart + Recharts BarChart (dönemsel Q1-Q4) + bilanço özet tablosu.
+  - Bankalarım: Toplam bakiye kartı + 3 banka kartı (bakiye, kredi limit, kullanım Progress bar renk kodlu %0-50 yeşil/%50-80 sarı/%80+ kırmızı, maskelenmiş hesap no göster/gizle).
+  - Tahsilatlarım: Sol panel bekleyen (kırmızı özet + gecikme günü badge), sağ panel yapılan (yeşil özet + "Ödendi" badge).
+  - Projelerim: Devam eden projeler (mavi border + pulse animasyonlu badge), tamamlanan projeler (yeşil border).
+  - AI Analiz + Uzman Görüşü: KisitliAlan bileşeni ile kilitli, blur overlay, özellik listesi, "Paketi Satın Al" butonu.
 
+- [02.05.2026] **Nakit Akışı (app/(user)/nakit-akis/page.tsx):**
+  - Dönem seçici (Bu Yıl/Geçen Yıl/Son 6 Ay).
+  - 3 metrik kart: Toplam Giriş (yeşil), Toplam Çıkış (kırmızı), Net Pozisyon (dinamik renk).
+  - Recharts AreaChart: 12 aylık gradient dolgulu çift alan grafiği (yeşil giriş / kırmızı çıkış) + Legend + Tooltip.
+  - Aylık Detay Tablosu: Ay×Giriş×Çıkış×Net×Kümülatif Net (useMemo ile hesaplanan). Toplam satırı bold.
+  - Trend Analizi Kartı: Son 3 ay vs önceki 3 ay nakit girişi otomatik hesaplama, % olarak gösterim.
+  - PDF İndir butonu (window.print).
 
-## 5. Mevcut Klasör Yapısı (Admin Paneli)
+- [02.05.2026] **Borç/Alacak (app/(user)/borc-alacak/page.tsx):**
+  - 4 metrik kart: Toplam Alacak, Toplam Borç, Net Pozisyon, Vadesi Yaklaşan (30 gün).
+  - Recharts PieChart (Doughnut): Alacak/Borç/Özkaynak oransal dağılımı.
+  - Recharts BarChart: 4 vade aralığı (0-30, 31-60, 61-90, 90+) borç vs alacak karşılaştırması.
+  - Borç Listesi: Gecikmiş borçlar kırmızı satır + animate-pulse badge.
+  - Alacak Listesi: Filtreli (Bekleyen/Gecikmiş/Tamamlanan), duruma göre renkli badge.
+  - Yaşlandırma Analizi Tablosu: Vade aralığı×Alacak×Borç×Net. 90+ gün satırı kırmızı arka plan (riskli). TOPLAM satırı bold.
+  - Tüm sayılar Intl.NumberFormat('tr-TR') ile formatlanmış.
+
+- [02.05.2026] **Profil (app/(user)/profil/page.tsx):**
+  - 2 kolonlu layout: Sol profil kartı (gradient avatar, isim, email, firma, üyelik tarihi, Aktif+Paket badge), sağ 4 sekmeli detay paneli.
+  - Hesap sekmesi: Ad Soyad düzenleme + şifre değiştirme formu (Zod: min 8 karakter, eşleşme kontrolü).
+  - Paketim sekmesi: Mevcut paket kartı + "Paketi Yükselt" → usePremiumModal(). Özellik durumu tablosu (✓ Aktif / 🔒 Kilitli). Son 5 talep geçmişi.
+  - Bildirimler sekmesi: 4 Switch toggle (admin onayı, vade uyarısı, tahsilat hatırlatma, e-posta).
+  - Güvenlik sekmesi: Aktif oturumlar listesi (cihaz ikonu + konum). AlertDialog ile "Tüm Oturumlardan Çıkış" onay diyaloğu.
+  - Sayfa altında tam genişlik kırmızı "Çıkış Yap" butonu.
+
+## 5. Mevcut Klasör Yapısı
+
 ```text
 admin-panel/
 ├── app/
-│   ├── (auth)/login/
-│   ├── (admin)/dashboard/, firmalar/, finansal-rapor/, loglar/ vs.
+│   ├── (auth)/
+│   │   ├── login/page.tsx
+│   │   └── register/page.tsx           ← Kullanıcı kayıt (teal tema, Zod)
+│   ├── (admin)/                        ← Admin paneli (koyu lacivert tema)
+│   │   ├── dashboard/page.tsx
+│   │   ├── firmalar/page.tsx, [id]/page.tsx
+│   │   ├── finansal-rapor/[firma_id]/page.tsx
+│   │   ├── finansal-durum/[firma_id]/page.tsx
+│   │   ├── yatirim/[firma_id]/page.tsx
+│   │   ├── on-sunum/[firma_id]/page.tsx
+│   │   ├── firmalarimiz/page.tsx
+│   │   ├── sozlesmeler/page.tsx
+│   │   ├── premium-talepler/page.tsx
+│   │   └── loglar/page.tsx
+│   └── (user)/                         ← Kullanıcı paneli (koyu yeşil/teal tema)
+│       ├── layout.tsx                  ← PremiumModalProvider + UserSidebar + UserHeader
+│       ├── dashboard/page.tsx
+│       ├── firma-bilgileri/page.tsx
+│       ├── finansal-rapor/page.tsx
+│       ├── nakit-akis/page.tsx
+│       ├── borc-alacak/page.tsx
+│       └── profil/page.tsx
 ├── components/
-│   ├── layout/, firma/, finansal/, charts/, ai/, premium/, shared/
+│   ├── layout/Sidebar.tsx, Header.tsx  ← Admin layout bileşenleri
+│   ├── user/                           ← Kullanıcı paneli bileşenleri
+│   │   ├── UserSidebar.tsx, UserHeader.tsx
+│   │   ├── PremiumModal.tsx, PremiumKarti.tsx
+│   │   ├── KisitliAlan.tsx, OnayBekleniyor.tsx
+│   ├── ui/                             ← shadcn/ui bileşenleri
+│   ├── firma/, finansal/, charts/, ai/, premium/, shared/
+├── context/
+│   └── PremiumModalContext.tsx          ← Global premium modal yönetimi
 ├── lib/
 │   ├── api.ts, auth.ts, supabase.ts, utils.ts, validations.ts
 ├── hooks/
 │   ├── useFirmalar.ts, useFinansalRapor.ts, usePremium.ts
 ├── types/
 │   └── index.ts
-└── next.config.ts, .env.local, middleware.ts
+├── middleware.ts                        ← JWT rol bazlı yönlendirme
+└── next.config.ts, .env.local
 ```
 
-## 6. Sıradaki Adım
-Kullanıcının bir sonraki promptu bekleniyor. Büyük ihtimalle temel layout ve kimlik doğrulama (auth) ya da sayfa içi bileşenlerin doldurulmasına geçilecektir.
+## 6. Tasarım Farkları (Admin vs Kullanıcı)
+
+| Özellik | Admin Paneli | Kullanıcı Paneli |
+|---------|-------------|-----------------|
+| Sidebar Rengi | Koyu lacivert (#1a2f5e) | Koyu yeşil-teal (#0f4c3a) |
+| Accent | Mavi (#007bff) | Teal/Mint (#14b8a6) |
+| Logo | "Pro Sicht" + "Admin Paneli" | "Pro Sicht" + "Müşteri Paneli" |
+| Stil | Kurumsal, yoğun veri | Temiz, sade, kullanıcı dostu |
+| Premium | Premium talepleri YÖNETİR | Premium talep GÖNDERIR |
+
+## 7. Sıradaki Adım
+Bildirim sistemi (polling, BildirimDropdown, vade uyarıları) geliştirilecek.
