@@ -148,10 +148,24 @@ admin-panel/
 │   ├── firma/, finansal/, charts/, ai/, premium/
 ├── context/
 │   └── PremiumModalContext.tsx          ← Global premium modal yönetimi
+├── providers/
+│   └── QueryProvider.tsx               ← React Query client (gcTime, retryDelay ayarlı)
 ├── lib/
-│   ├── api.ts, auth.ts, supabase.ts, utils.ts, validations.ts
+│   ├── api.ts                          ← Axios instance + tüm endpoint fonksiyonları (tipli)
+│   ├── auth.ts, supabase.ts, utils.ts
+│   ├── validations.ts                  ← Türkçe Zod error map + ortak şemalar
+│   ├── toast.ts                        ← Merkezi toast fonksiyonları
+│   └── query-keys.ts                   ← Merkezi query key yönetimi + filtre tipleri
 ├── hooks/
-│   ├── useFirmalar.ts, useFinansalRapor.ts, usePremium.ts
+│   ├── useFirmalar.ts                  ← Admin: CRUD + OCR + onaylama (optimistic delete)
+│   ├── useFirmam.ts                    ← User: kendi firma CRUD + OCR
+│   ├── useFinansalRapor.ts             ← Rapor, AI analiz, bankalar, tahsilatlar, projeler
+│   ├── usePremium.ts                   ← Admin onay/red + User erişim kontrolü + satın alma
+│   ├── useBildirimler.ts               ← 30sn polling + optimistic okundu
+│   ├── useLogs.ts                      ← Admin: işlem ve AI çağrı logları
+│   ├── usePptx.ts                      ← PPTX oluşturma + Blob indirme
+│   ├── useTableFilters.ts              ← URL query param filtre yönetimi
+│   └── useNotifications.ts             ← (eski, useBildirimler ile değiştirildi)
 ├── types/
 │   └── index.ts
 ├── middleware.ts                        ← JWT rol bazlı yönlendirme
@@ -175,6 +189,18 @@ admin-panel/
 - [02.05.2026] **Root Layout Refactor:** ThemeProvider ve QueryProvider root layout'a (app/layout.tsx) taşındı. Admin ve User layout'larından kaldırılarak duplicate provider sorunu çözüldü. `providers/QueryProvider.tsx` ayrı dosyaya çıkarıldı.
 - [02.05.2026] **Shared Bileşenler:** DarkModeToggle (hydration-safe), LoadingSkeleton (6 tip: TableSkeleton, MetricCardsSkeleton, FormSkeleton, ChartSkeleton, BankaKartSkeleton, ListSkeleton), EmptyState (3 variant), PageHeader (back+badge+actions), ConfirmDialog (loading+destructive), ErrorBoundary (panel bazlı tema).
 - [02.05.2026] **Utility Dosyaları:** `lib/toast.ts` (showSuccess/Error/Warning/Info/Loading/Promise merkezi fonksiyonlar). `lib/validations.ts` (Türkçe Zod error map + firma/login/register/finansalRapor ortak şemaları).
+- [02.05.2026] **React Query Hook Sistemi:** Tüm veri katmanı yeniden yapılandırıldı:
+  - `lib/query-keys.ts`: Merkezi query key factory + FirmaFilters/TalepFilters/LogFilters tipleri.
+  - `lib/api.ts`: Tamamen yeniden yazıldı — tüm endpoint'ler tipli (Firma/User/Premium/Bildirim/Log ayrımıyla), filtre parametreli.
+  - `hooks/useFirmalar.ts`: Admin CRUD (optimistic delete, cache invalidation), OCR, onaylama.
+  - `hooks/useFirmam.ts`: User kendi firma verisi (GET /firma/me), güncelleme, OCR.
+  - `hooks/useFinansalRapor.ts`: Rapor CRUD, AI analiz üretme (loading toast), bankalar, tahsilatlar, projeler.
+  - `hooks/usePremium.ts`: Admin talep onay/red, User erişim kontrolü (`usePremiumErisimVar` boolean hook), satın alma.
+  - `hooks/useBildirimler.ts`: 30sn polling, optimistic okundu işaretleme, toplu okundu.
+  - `hooks/useLogs.ts`: Admin işlem ve AI çağrı logları (pagination).
+  - `hooks/usePptx.ts`: PPTX oluşturma mutation + Blob → dosya indirme.
+  - `hooks/useTableFilters.ts`: URL query param bazlı filtre yönetimi (setFilter, setPage, resetFilters).
+  - `providers/QueryProvider.tsx`: gcTime, retryDelay (exponential backoff), mutations retry:0.
 
 ## 7. Sıradaki Adım
 Kullanıcının bir sonraki promptu bekleniyor.
