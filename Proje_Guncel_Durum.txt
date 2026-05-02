@@ -31,6 +31,8 @@ Pro Sicht İş Birliği ile geliştirilen, finansal danışmanlık sektörü iç
 - [02.05.2026] **Yatırım Portföy Paneli:** `app/(admin)/yatirim/[firma_id]/page.tsx` sayfası eklendi. Gradient kartlar, Recharts Sparkline mini-grafikler, sektörel dağılım pastası, benchmark line chart ve AI destekli Risk Haritası tasarlandı. Modal içinde form validasyonu yapıldı.
 - [02.05.2026] **PowerPoint Ön Sunum Üretici:** `app/(admin)/on-sunum/[firma_id]/page.tsx` eklendi. Multi-step progress bar simülasyonu, CSS wireframe önizleme paneli, tema renk seçici, checkbox slayt seçimi ve Blob tabanlı .pptx indirme fonksiyonu kodlandı.
 - [02.05.2026] **İç Süreç Yönetimi (Firmalarımız & Sözleşmeler):** `app/(admin)/firmalarimiz/page.tsx` 4 sekmeli (Sözleşmeler, Abonelik, Finansal, Tahsilat) yapıyla kuruldu. Bitiş tarihi yaklaşan sözleşmeler için `date-fns` ile kalan gün hesabı yapıldı. `app/(admin)/sozlesmeler/page.tsx` sayfası bağımsız liste ve ekleme modalıyla entegre edildi.
+- [02.05.2026] **Premium Talepler Yönetimi:** `app/(admin)/premium-talepler/page.tsx` oluşturuldu. Onayla (`AlertDialog`) ve Reddet (`Dialog`) iş akışları, sağdan açılan `Sheet` detay paneli, optimistic update simülasyonu ve filtreleme sistemleri tamamlandı.
+
 
 
 
