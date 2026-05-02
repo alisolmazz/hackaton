@@ -136,8 +136,16 @@ admin-panel/
 │   │   ├── UserSidebar.tsx, UserHeader.tsx
 │   │   ├── PremiumModal.tsx, PremiumKarti.tsx
 │   │   ├── KisitliAlan.tsx, OnayBekleniyor.tsx
+│   │   └── BildirimDropdown.tsx        ← Popover bildirim listesi
+│   ├── shared/                         ← Her iki panel için ortak bileşenler
+│   │   ├── DarkModeToggle.tsx          ← Hydration-safe dark mode toggle
+│   │   ├── LoadingSkeleton.tsx         ← 6 skeleton tipi (tablo, kart, form, grafik, banka, liste)
+│   │   ├── EmptyState.tsx              ← 3 variant (default, error, search)
+│   │   ├── PageHeader.tsx              ← Başlık + back butonu + badge + actions
+│   │   ├── ConfirmDialog.tsx           ← Loading state + destructive variant
+│   │   └── ErrorBoundary.tsx           ← Panel bazlı tema (admin mavi, user teal)
 │   ├── ui/                             ← shadcn/ui bileşenleri
-│   ├── firma/, finansal/, charts/, ai/, premium/, shared/
+│   ├── firma/, finansal/, charts/, ai/, premium/
 ├── context/
 │   └── PremiumModalContext.tsx          ← Global premium modal yönetimi
 ├── lib/
@@ -160,5 +168,13 @@ admin-panel/
 | Stil | Kurumsal, yoğun veri | Temiz, sade, kullanıcı dostu |
 | Premium | Premium talepleri YÖNETİR | Premium talep GÖNDERIR |
 
+### 4.3 Global Altyapı ve Ortak Bileşenler
+
+- [02.05.2026] **Bildirim Sistemi:** `hooks/useNotifications.ts` (30sn polling, useQuery, markAsRead/markAllAsRead). `BildirimDropdown.tsx` (Popover bildirim listesi, tip bazlı ikon/renk, timeAgo, okunmamış mavi nokta, tıklayınca ilgili sayfaya yönlendirme). UserHeader'a entegre edildi.
+- [02.05.2026] **globals.css Yeniden Yazıldı:** Panel renk değişkenleri (admin-sidebar, user-sidebar, admin-accent, user-accent), dark mode oklch renkleri, custom scrollbar, sayfa geçiş animasyonu (pageIn), print styles.
+- [02.05.2026] **Root Layout Refactor:** ThemeProvider ve QueryProvider root layout'a (app/layout.tsx) taşındı. Admin ve User layout'larından kaldırılarak duplicate provider sorunu çözüldü. `providers/QueryProvider.tsx` ayrı dosyaya çıkarıldı.
+- [02.05.2026] **Shared Bileşenler:** DarkModeToggle (hydration-safe), LoadingSkeleton (6 tip: TableSkeleton, MetricCardsSkeleton, FormSkeleton, ChartSkeleton, BankaKartSkeleton, ListSkeleton), EmptyState (3 variant), PageHeader (back+badge+actions), ConfirmDialog (loading+destructive), ErrorBoundary (panel bazlı tema).
+- [02.05.2026] **Utility Dosyaları:** `lib/toast.ts` (showSuccess/Error/Warning/Info/Loading/Promise merkezi fonksiyonlar). `lib/validations.ts` (Türkçe Zod error map + firma/login/register/finansalRapor ortak şemaları).
+
 ## 7. Sıradaki Adım
-Bildirim sistemi (polling, BildirimDropdown, vade uyarıları) geliştirilecek.
+Kullanıcının bir sonraki promptu bekleniyor.

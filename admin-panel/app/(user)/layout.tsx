@@ -11,8 +11,10 @@ export default function UserLayout({ children }: { children: React.ReactNode }) 
         <UserSidebar />
         <div className="flex-1 flex flex-col md:pl-[260px]">
           <UserHeader />
-          <main className="flex-1 p-6 md:p-8 overflow-y-auto custom-scrollbar">
-            {children}
+          <main className="flex-1 p-4 md:p-6 lg:p-8 overflow-y-auto custom-scrollbar">
+            <div className="animate-in fade-in-0 slide-in-from-bottom-4 duration-300">
+              {children}
+            </div>
           </main>
         </div>
       </div>
