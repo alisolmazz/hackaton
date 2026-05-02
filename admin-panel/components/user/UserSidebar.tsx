@@ -1,18 +1,16 @@
 'use client';
 
-import React, { useState } from 'react';
+import React from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { 
   Building2, LayoutDashboard, FileBarChart, TrendingUp, Scale,
-  User, Crown, Lock, LogOut, Sparkles, BrainCircuit, Settings
+  User, Crown, Lock, LogOut, Sparkles, BrainCircuit
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { CheckCircle2 } from 'lucide-react';
+import { usePremiumModal } from '@/context/PremiumModalContext';
 
 const MENU_GENEL = [
   { icon: LayoutDashboard, label: 'Ana Sayfa', href: '/user/dashboard' },
@@ -37,7 +35,7 @@ const MENU_HESAP = [
 export function UserSidebar() {
   const pathname = usePathname();
   const router = useRouter();
-  const [premiumOpen, setPremiumOpen] = useState(false);
+  const { openModal } = usePremiumModal();
 
   const firmaAdi = 'TechNova Yazılım A.Ş.'; // API'den gelecek
 
@@ -109,7 +107,7 @@ export function UserSidebar() {
               <Tooltip key={item.label}>
                 <TooltipTrigger asChild>
                   <button
-                    onClick={() => setPremiumOpen(true)}
+                    onClick={() => openModal()}
                     className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-teal-100/30 hover:bg-white/5 hover:text-teal-100/50 transition-all border border-transparent cursor-pointer"
                   >
                     <item.icon className="h-[18px] w-[18px] text-teal-400/20" />
@@ -129,7 +127,7 @@ export function UserSidebar() {
             <div className="text-[10px] font-bold text-teal-200/30 uppercase tracking-[0.15em] mb-2 px-2">Hesap</div>
             {MENU_HESAP.map(item => <NavLink key={item.href} item={item} />)}
             <button
-              onClick={() => setPremiumOpen(true)}
+              onClick={() => openModal()}
               className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold text-amber-400/80 hover:bg-amber-500/10 hover:text-amber-300 transition-all border border-amber-400/10"
             >
               <Crown className="h-[18px] w-[18px] text-amber-400/60" />
@@ -154,38 +152,6 @@ export function UserSidebar() {
           </div>
         </div>
       </div>
-
-      {/* PREMİUM MODAL */}
-      <Dialog open={premiumOpen} onOpenChange={setPremiumOpen}>
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2"><Crown className="w-5 h-5 text-amber-500" /> Premium Paketler</DialogTitle>
-            <DialogDescription>Firmanıza en uygun paketi seçin ve talebi gönderin.</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            {[
-              { ad: 'Temel Analiz', fiyat: '₺2,500 /ay', ozellikler: ['AI Analiz Raporu', 'Grafik Çıktıları'], renk: 'border-blue-200 bg-blue-50/50' },
-              { ad: 'Uzman Görüşü', fiyat: '₺5,000 /ay', ozellikler: ['Uzman Yorumu', 'Risk Değerlendirmesi', 'Öneriler'], renk: 'border-purple-200 bg-purple-50/50' },
-              { ad: 'Premium Bundle', fiyat: '₺7,500 /ay', ozellikler: ['Tüm AI Özellikler', 'Uzman Görüşü', 'Ön Sunum .pptx'], renk: 'border-amber-300 bg-amber-50/50' },
-            ].map(p => (
-              <div key={p.ad} className={`p-4 rounded-xl border-2 ${p.renk} flex items-center justify-between`}>
-                <div>
-                  <h4 className="font-bold">{p.ad}</h4>
-                  <ul className="text-xs text-slate-500 mt-1 space-y-0.5">
-                    {p.ozellikler.map(o => (
-                      <li key={o} className="flex items-center gap-1"><CheckCircle2 className="w-3 h-3 text-emerald-500"/>{o}</li>
-                    ))}
-                  </ul>
-                </div>
-                <div className="text-right">
-                  <p className="font-bold text-lg">{p.fiyat}</p>
-                  <Button size="sm" variant="outline" className="mt-2 text-xs">Talep Et</Button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </DialogContent>
-      </Dialog>
     </TooltipProvider>
   );
 }
