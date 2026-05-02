@@ -1,0 +1,51 @@
+# BSMT Hackathon - Pro Sicht Fintech Platformu
+# Proje Güncel Durum ve Yapı Özeti
+
+## 1. Proje Özeti
+Pro Sicht İş Birliği ile geliştirilen, finansal danışmanlık sektörü için yapay zeka (AI) destekli, çok katmanlı bir web/mobil finans yönetim platformudur. İki ana kullanıcı kitlesi (Yönetici/Admin ve Son Kullanıcı/Şirket Yetkilisi) bulunur. 
+
+## 2. Teknoloji Yığını (Tech Stack)
+- **Admin Paneli:** Next.js 14 (App Router), TypeScript, Tailwind CSS, shadcn/ui, Recharts, @tanstack/react-query, axios, react-hook-form + zod, next-themes, sonner, lucide-react, @supabase/supabase-js.
+- **Kullanıcı Paneli:** Flutter (Mobil ve Web) - (Geliştirilecek)
+- **Backend:** FastAPI (Python) - (Geliştirilecek)
+- **Veritabanı ve Auth:** Supabase (PostgreSQL, JWT)
+- **AI Entegrasyonları:** OCR, LLM analiz, python-pptx.
+
+## 3. Sistem Mimarisi ve Veritabanı
+- **Admin Paneli:** Firma ve finansal verilerin tam yönetimi, AI analiz tetikleme, uzman görüşü ve sözleşme/abonelik yönetimi.
+- **Kullanıcı Paneli:** Kısıtlı görünüm; sadece kendi firmalarının finansal raporları, tahsilat vb.
+
+## 4. Yapılan İşlemler (Log)
+- [02.05.2026] Proje gereksinimleri (BSMT_Hackathon_Fintech_Raporu.pdf) ve geliştirme planı (BSMT_Hackathon_Plan.md) okundu. Projenin genel bağlamı kavrandı.
+- [02.05.2026] **Admin Paneli Altyapısı Kuruldu:** Next.js 14 projesi oluşturuldu. İstenen paketler (shadcn/ui, supabase, recharts, react-query vb.) projeye dahil edildi.
+- [02.05.2026] **Admin Paneli Klasör Yapısı:** İstenilen tam klasör dizilimi (app/(auth), app/(admin), components/layout, components/firma vb.) oluşturuldu. 
+- [02.05.2026] `.env.local` ve `next.config.ts` (API Proxy ve Image ayarları) dosyaları yapılandırıldı. `src` dizininden çıkılarak `app/` kök dizine alındı.
+- [02.05.2026] **Core Lib & Types:** `types/index.ts` ile tüm arayüzler ve tipler (Firma, User, FinansalRapor vb.) tanımlandı. `lib/api.ts` içerisinde Axios interceptor'ları (401/403 handle, token header) ve endpoint'ler yazıldı. `lib/auth.ts` ile JWT decode, login, logout fonksiyonları oluşturuldu. `lib/supabase.ts` ayarlandı.
+- [02.05.2026] **Middleware & Auth Koruması:** `middleware.ts` oluşturularak token bazlı sayfa yönlendirmeleri (root -> /dashboard, korumalı sayfalara izinsiz erişim engellemesi vb.) eklendi.
+- [02.05.2026] **Layout & Navigasyon:** `app/(admin)/layout.tsx` dosyası ThemeProvider ve QueryClientProvider ile sarmalandı. Responsive Sidebar ve Header bileşenleri tasarlandı. Dark mode, avatar dropdown ve mobil sheet menü özellikleri entegre edildi.
+- [02.05.2026] **Login Ekranı:** `app/(auth)/login/page.tsx` sayfası react-hook-form ve Zod validasyonu ile tasarlandı.
+- [02.05.2026] **Dashboard & Firmalar Listesi:** `app/(admin)/dashboard/page.tsx` ve `app/(admin)/firmalar/page.tsx` geliştirildi. React-Query hook'ları (useFirmalar vb.) eklendi. Pagination, filtreleme ve Recharts ile grafik entegrasyonu tamamlandı.
+- [02.05.2026] **Firma Formu & Detay Yönetimi:** AI destekli OCR form bileşeni `components/firma/FirmaForm.tsx` (Zod, React-Hook-Form) yazıldı. `app/(admin)/firmalar/[id]/page.tsx` içerisine Tabs (Firma Bilgileri, Rapor, Durum, Sunum) entegre edildi. Inline düzenleme ve Onay/Sil aksiyonları bağlandı.
+- [02.05.2026] **Finansal Rapor & AI Analiz:** `app/(admin)/finansal-rapor/[firma_id]/page.tsx` geliştirildi. React-Hook-Form (Nakit Akış listeleri), Recharts grafikleri, AI Analiz markdown çıktısı (`react-markdown`), Bankalar ve Tahsilatlar alt modülleri entegre edildi. Unsaved changes warning aktif edildi.
+
+
+
+## 5. Mevcut Klasör Yapısı (Admin Paneli)
+```text
+admin-panel/
+├── app/
+│   ├── (auth)/login/
+│   ├── (admin)/dashboard/, firmalar/, finansal-rapor/, loglar/ vs.
+├── components/
+│   ├── layout/, firma/, finansal/, charts/, ai/, premium/, shared/
+├── lib/
+│   ├── api.ts, auth.ts, supabase.ts, utils.ts, validations.ts
+├── hooks/
+│   ├── useFirmalar.ts, useFinansalRapor.ts, usePremium.ts
+├── types/
+│   └── index.ts
+└── next.config.ts, .env.local, middleware.ts
+```
+
+## 6. Sıradaki Adım
+Kullanıcının bir sonraki promptu bekleniyor. Büyük ihtimalle temel layout ve kimlik doğrulama (auth) ya da sayfa içi bileşenlerin doldurulmasına geçilecektir.
