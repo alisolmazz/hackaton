@@ -201,6 +201,12 @@ admin-panel/
   - `hooks/usePptx.ts`: PPTX oluşturma mutation + Blob → dosya indirme.
   - `hooks/useTableFilters.ts`: URL query param bazlı filtre yönetimi (setFilter, setPage, resetFilters).
   - `providers/QueryProvider.tsx`: gcTime, retryDelay (exponential backoff), mutations retry:0.
+### 4.4 Deployment & Dokümantasyon
+
+- [02.05.2026] **vercel.json:** Security header'ları (X-Frame-Options DENY, X-Content-Type-Options nosniff, X-XSS-Protection, Referrer-Policy), CDG1 region, Next.js framework ayarı.
+- [02.05.2026] **.env.example:** Supabase URL/Key + FastAPI backend URL şablonu.
+- [02.05.2026] **README.md:** Kapsamlı Türkçe README — tüm admin+user sayfaları tablosu, teknoloji stack, kurulum, demo hesapları, AI prompt stratejisi (OCR/Analiz/PPTX), mimari kararlar tablosu, deploy talimatları (Vercel+Railway).
+- [02.05.2026] **scripts/seed-data.ts:** Supabase'e demo veri seed script'i — 4 kullanıcı (1 admin + 3 user), 3 firma (2 onaylı, 1 bekleyen), 2 finansal rapor (1 AI analizli), 5 banka hesabı, 5 tahsilat, 5 proje, 3 premium talep (onaylı/bekleyen/reddedildi). `npx ts-node scripts/seed-data.ts` ile çalıştırılır.
 
 ## 7. Sıradaki Adım
 Kullanıcının bir sonraki promptu bekleniyor.
