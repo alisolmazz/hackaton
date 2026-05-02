@@ -33,6 +33,7 @@ Pro Sicht İş Birliği ile geliştirilen, finansal danışmanlık sektörü iç
 - [02.05.2026] **İç Süreç Yönetimi (Firmalarımız & Sözleşmeler):** `app/(admin)/firmalarimiz/page.tsx` 4 sekmeli (Sözleşmeler, Abonelik, Finansal, Tahsilat) yapıyla kuruldu. Bitiş tarihi yaklaşan sözleşmeler için `date-fns` ile kalan gün hesabı yapıldı. `app/(admin)/sozlesmeler/page.tsx` sayfası bağımsız liste ve ekleme modalıyla entegre edildi.
 - [02.05.2026] **Premium Talepler Yönetimi:** `app/(admin)/premium-talepler/page.tsx` oluşturuldu. Onayla (`AlertDialog`) ve Reddet (`Dialog`) iş akışları, sağdan açılan `Sheet` detay paneli, optimistic update simülasyonu ve filtreleme sistemleri tamamlandı.
 - [02.05.2026] **Sistem Logları Sayfası:** `app/(admin)/loglar/page.tsx` eklendi. URL param tabanlı pagination, Update JSON diff görüntüleyici (`Sheet`), AI çağrı süreleri LineChart analizi ve HTTP hata Stack Trace modalı kurgulandı.
+- [02.05.2026] **Kullanıcı Paneli Altyapısı:** `middleware.ts` rol bazlı yönlendirmeye güncellendi. `app/(auth)/register/page.tsx` (Zod validasyonlu kayıt formu), `app/(user)/layout.tsx`, `UserSidebar.tsx` (teal tema), `UserHeader.tsx`, `PremiumKarti.tsx`, `KisitliAlan.tsx`, `OnayBekleniyor.tsx` bileşenleri ve 6 kullanıcı sayfası (dashboard, firma-bilgileri, finansal-rapor, nakit-akis, borc-alacak, profil) oluşturuldu.
 
 
 

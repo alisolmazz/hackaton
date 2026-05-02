@@ -3,40 +3,93 @@ import type { NextRequest } from 'next/server';
 
 export function middleware(request: NextRequest) {
   const token = request.cookies.get('fintech_auth_token')?.value;
-  const path = request.nextUrl.pathname;
+  const { pathname } = request.nextUrl;
 
-  // Kök route -> dashboard
-  if (path === '/') {
-    return NextResponse.redirect(new URL('/dashboard', request.url));
+  // Login rotasına giriş
+  if (pathname.startsWith('/login') || pathname.startsWith('/register')) {
+    if (token) {
+      try {
+        const base64Url = token.split('.')[1];
+        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+        const payload = JSON.parse(atob(base64));
+        
+        if (payload?.role === 'admin') {
+          return NextResponse.redirect(new URL('/dashboard', request.url));
+        } else {
+          return NextResponse.redirect(new URL('/user/dashboard', request.url));
+        }
+      } catch (e) {
+        // Hatalı token ise devam et (login'i görebilir)
+      }
+    }
+    return NextResponse.next();
   }
 
-  // Login iken login'e gidiliyorsa -> dashboard
-  if (path === '/login' && token) {
-    return NextResponse.redirect(new URL('/dashboard', request.url));
-  }
+  // Admin rotaları (mevcut sayfalarımız)
+  const isAdminRoute = pathname.startsWith('/dashboard') || 
+                       pathname.startsWith('/firmalar') ||
+                       pathname.startsWith('/finansal-rapor') ||
+                       pathname.startsWith('/finansal-durum') ||
+                       pathname.startsWith('/yatirim') ||
+                       pathname.startsWith('/on-sunum') ||
+                       pathname.startsWith('/firmalarimiz') ||
+                       pathname.startsWith('/sozlesmeler') ||
+                       pathname.startsWith('/premium-talepler') ||
+                       pathname.startsWith('/loglar');
 
-  // Sadece admin sayfalarını koru (static dosyaları veya login'i değil)
-  const isProtectedRoute = !path.startsWith('/login') && !path.startsWith('/_next') && !path.startsWith('/favicon');
-
-  if (isProtectedRoute && !token) {
-    return NextResponse.redirect(new URL('/login', request.url));
-  }
-
-  // Token var ve route korumalı ise -> basit jwt çözümlemesi (Edge Runtime)
-  if (isProtectedRoute && token) {
+  if (isAdminRoute) {
+    if (!token) return NextResponse.redirect(new URL('/login', request.url));
+    
     try {
       const base64Url = token.split('.')[1];
       const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
       const payload = JSON.parse(atob(base64));
       
-      // İleride rol bazlı yetkilendirme eklenebilir
-      // if (payload.role !== 'admin') { ... }
+      if (payload?.role !== 'admin') {
+        return NextResponse.redirect(new URL('/user/dashboard', request.url));
+      }
     } catch (error) {
-      // Hatalı token -> temizle ve logine dön
       const response = NextResponse.redirect(new URL('/login', request.url));
       response.cookies.delete('fintech_auth_token');
       return response;
     }
+  }
+
+  // Kullanıcı rotaları
+  if (pathname.startsWith('/user')) {
+    if (!token) return NextResponse.redirect(new URL('/login', request.url));
+    
+    try {
+      const base64Url = token.split('.')[1];
+      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+      const payload = JSON.parse(atob(base64));
+      
+      // Not: Normalde user rolü kontrol edilir. Adminin user panelini görebilmesini istersek burayı esnetebiliriz.
+      // if (payload?.role !== 'user' && payload?.role !== 'admin') ...
+    } catch (error) {
+      const response = NextResponse.redirect(new URL('/login', request.url));
+      response.cookies.delete('fintech_auth_token');
+      return response;
+    }
+  }
+
+  // Kök dizin kontrolü
+  if (pathname === '/') {
+    if (token) {
+       try {
+        const base64Url = token.split('.')[1];
+        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+        const payload = JSON.parse(atob(base64));
+        if (payload?.role === 'admin') {
+          return NextResponse.redirect(new URL('/dashboard', request.url));
+        } else {
+          return NextResponse.redirect(new URL('/user/dashboard', request.url));
+        }
+       } catch (e) {
+          return NextResponse.redirect(new URL('/login', request.url));
+       }
+    }
+    return NextResponse.redirect(new URL('/login', request.url));
   }
 
   return NextResponse.next();
