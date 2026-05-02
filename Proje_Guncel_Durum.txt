@@ -27,6 +27,8 @@ Pro Sicht İş Birliği ile geliştirilen, finansal danışmanlık sektörü iç
 - [02.05.2026] **Dashboard & Firmalar Listesi:** `app/(admin)/dashboard/page.tsx` ve `app/(admin)/firmalar/page.tsx` geliştirildi. React-Query hook'ları (useFirmalar vb.) eklendi. Pagination, filtreleme ve Recharts ile grafik entegrasyonu tamamlandı.
 - [02.05.2026] **Firma Formu & Detay Yönetimi:** AI destekli OCR form bileşeni `components/firma/FirmaForm.tsx` (Zod, React-Hook-Form) yazıldı. `app/(admin)/firmalar/[id]/page.tsx` içerisine Tabs (Firma Bilgileri, Rapor, Durum, Sunum) entegre edildi. Inline düzenleme ve Onay/Sil aksiyonları bağlandı.
 - [02.05.2026] **Finansal Rapor & AI Analiz:** `app/(admin)/finansal-rapor/[firma_id]/page.tsx` geliştirildi. React-Hook-Form (Nakit Akış listeleri), Recharts grafikleri, AI Analiz markdown çıktısı (`react-markdown`), Bankalar ve Tahsilatlar alt modülleri entegre edildi. Unsaved changes warning aktif edildi.
+- [02.05.2026] **Finansal Durum Özeti Paneli:** `app/(admin)/finansal-durum/[firma_id]/page.tsx` oluşturuldu. Accordion destekli tahsilat listesi, Recharts AreaChart nakit akışı, Banka ve Proje kartları, Oran analizleri tabloları eklendi.
+
 
 
 
