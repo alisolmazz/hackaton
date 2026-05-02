@@ -2,94 +2,33 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 export function middleware(request: NextRequest) {
-  const token = request.cookies.get('fintech_auth_token')?.value;
   const { pathname } = request.nextUrl;
 
-  // Login rotasına giriş
-  if (pathname.startsWith('/login') || pathname.startsWith('/register')) {
-    if (token) {
-      try {
-        const base64Url = token.split('.')[1];
-        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-        const payload = JSON.parse(atob(base64));
-        
-        if (payload?.role === 'admin') {
-          return NextResponse.redirect(new URL('/dashboard', request.url));
-        } else {
-          return NextResponse.redirect(new URL('/user/dashboard', request.url));
-        }
-      } catch (e) {
-        // Hatalı token ise devam et (login'i görebilir)
-      }
-    }
-    return NextResponse.next();
-  }
+  const token = request.cookies.get('sb-access-token')?.value;
+  const role = request.cookies.get('sb-role')?.value;
 
-  // Admin rotaları (mevcut sayfalarımız)
-  const isAdminRoute = pathname.startsWith('/dashboard') || 
-                       pathname.startsWith('/firmalar') ||
-                       pathname.startsWith('/finansal-rapor') ||
-                       pathname.startsWith('/finansal-durum') ||
-                       pathname.startsWith('/yatirim') ||
-                       pathname.startsWith('/on-sunum') ||
-                       pathname.startsWith('/firmalarimiz') ||
-                       pathname.startsWith('/sozlesmeler') ||
-                       pathname.startsWith('/premium-talepler') ||
-                       pathname.startsWith('/loglar');
-
-  if (isAdminRoute) {
-    if (!token) return NextResponse.redirect(new URL('/login', request.url));
-    
-    try {
-      const base64Url = token.split('.')[1];
-      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-      const payload = JSON.parse(atob(base64));
-      
-      if (payload?.role !== 'admin') {
-        return NextResponse.redirect(new URL('/user/dashboard', request.url));
-      }
-    } catch (error) {
-      const response = NextResponse.redirect(new URL('/login', request.url));
-      response.cookies.delete('fintech_auth_token');
-      return response;
+  // Protect (admin) and (user) routes
+  // Assume everything that is not /user or /auth is admin route, but better to be explicit
+  const isAdminRoute = pathname.startsWith('/dashboard') || pathname.startsWith('/firmalar') || pathname.startsWith('/sozlesmeler') || pathname.startsWith('/premium-talepler') || pathname.startsWith('/loglar') || pathname.startsWith('/ayarlar') || pathname.startsWith('/yatirim');
+  const isUserRoute = pathname.startsWith('/user');
+  
+  if (!token) {
+    if (isAdminRoute || isUserRoute) {
+      return NextResponse.redirect(new URL('/login', request.url));
     }
-  }
-
-  // Kullanıcı rotaları
-  if (pathname.startsWith('/user')) {
-    if (!token) return NextResponse.redirect(new URL('/login', request.url));
-    
-    try {
-      const base64Url = token.split('.')[1];
-      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-      const payload = JSON.parse(atob(base64));
-      
-      // Not: Normalde user rolü kontrol edilir. Adminin user panelini görebilmesini istersek burayı esnetebiliriz.
-      // if (payload?.role !== 'user' && payload?.role !== 'admin') ...
-    } catch (error) {
-      const response = NextResponse.redirect(new URL('/login', request.url));
-      response.cookies.delete('fintech_auth_token');
-      return response;
+  } else {
+    // If logged in, don't allow access to login/register or root
+    if (pathname === '/login' || pathname === '/register' || pathname === '/') {
+      return NextResponse.redirect(new URL(role === 'admin' ? '/dashboard' : '/user/dashboard', request.url));
     }
-  }
-
-  // Kök dizin kontrolü
-  if (pathname === '/') {
-    if (token) {
-       try {
-        const base64Url = token.split('.')[1];
-        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-        const payload = JSON.parse(atob(base64));
-        if (payload?.role === 'admin') {
-          return NextResponse.redirect(new URL('/dashboard', request.url));
-        } else {
-          return NextResponse.redirect(new URL('/user/dashboard', request.url));
-        }
-       } catch (e) {
-          return NextResponse.redirect(new URL('/login', request.url));
-       }
+    // Prevent user from accessing admin
+    if (isAdminRoute && role !== 'admin') {
+      return NextResponse.redirect(new URL('/user/dashboard', request.url));
     }
-    return NextResponse.redirect(new URL('/login', request.url));
+    // Prevent admin from accessing user
+    if (isUserRoute && role === 'admin') {
+      return NextResponse.redirect(new URL('/dashboard', request.url));
+    }
   }
 
   return NextResponse.next();

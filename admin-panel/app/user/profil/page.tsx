@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -21,6 +21,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { usePremiumModal } from '@/context/PremiumModalContext';
+import { getCurrentUser, logout } from '@/lib/auth';
+import type { User as AppUser } from '@/types';
 
 const sifreSchema = z.object({
   mevcutSifre: z.string().min(1, 'Mevcut şifre zorunludur.'),
@@ -42,13 +44,21 @@ const OTURUMLAR = [
 export default function ProfilPage() {
   const router = useRouter();
   const { openModal } = usePremiumModal();
-  const [adSoyad, setAdSoyad] = useState('Ahmet Yılmaz');
+  const [user, setUser] = useState<AppUser | null>(null);
+  const [adSoyad, setAdSoyad] = useState('');
   const [saving, setSaving] = useState(false);
   const [sifreSaving, setSifreSaving] = useState(false);
 
   const { register, handleSubmit, formState: { errors }, reset } = useForm({
     resolver: zodResolver(sifreSchema),
   });
+
+  useEffect(() => {
+    getCurrentUser().then(currentUser => {
+      setUser(currentUser);
+      setAdSoyad(currentUser?.name || '');
+    });
+  }, []);
 
   const handleAdKaydet = () => {
     setSaving(true);
@@ -60,10 +70,8 @@ export default function ProfilPage() {
     setTimeout(() => { setSifreSaving(false); reset(); toast.success('Şifreniz başarıyla güncellendi.'); }, 1000);
   };
 
-  const handleLogout = () => {
-    document.cookie = "fintech_auth_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
-    localStorage.clear();
-    router.push('/login');
+  const handleLogout = async () => {
+    await logout();
   };
 
   return (
@@ -82,9 +90,9 @@ export default function ProfilPage() {
               <div className="w-24 h-24 rounded-full bg-gradient-to-br from-teal-500 to-emerald-600 flex items-center justify-center text-white text-3xl font-bold shadow-lg shadow-teal-200/50 mb-4 border-4 border-white dark:border-slate-800">
                 AY
               </div>
-              <h3 className="text-xl font-bold text-slate-900 dark:text-white">Ahmet Yılmaz</h3>
-              <p className="text-sm text-slate-500 flex items-center gap-1 mt-1"><Mail className="w-3 h-3"/> ahmet@technova.com</p>
-              <p className="text-sm text-slate-500 mt-1">TechNova Yazılım A.Ş.</p>
+              <h3 className="text-xl font-bold text-slate-900 dark:text-white">{user?.name || 'Kullanıcı'}</h3>
+              <p className="text-sm text-slate-500 flex items-center gap-1 mt-1"><Mail className="w-3 h-3"/> {user?.email || ''}</p>
+              <p className="text-sm text-slate-500 mt-1">{user?.firmaAdi || 'Yeni şirket'}</p>
 
               <div className="flex items-center gap-2 mt-4">
                 <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 shadow-none">Aktif</Badge>
@@ -113,7 +121,7 @@ export default function ProfilPage() {
                 <CardContent className="pt-6 space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2"><Label>Ad Soyad</Label><Input value={adSoyad} onChange={e=>setAdSoyad(e.target.value)} className="h-11"/></div>
-                    <div className="space-y-2"><Label className="flex items-center gap-1">E-posta <Lock className="w-3 h-3 text-slate-400"/></Label><Input value="ahmet@technova.com" disabled className="h-11 bg-slate-50"/></div>
+                    <div className="space-y-2"><Label className="flex items-center gap-1">E-posta <Lock className="w-3 h-3 text-slate-400"/></Label><Input value={user?.email || ''} disabled className="h-11 bg-slate-50"/></div>
                   </div>
                   <div className="flex justify-end"><Button onClick={handleAdKaydet} disabled={saving} className="bg-teal-700 hover:bg-teal-800 text-white">{saving?<><Loader2 className="w-4 h-4 mr-2 animate-spin"/>Kaydediliyor...</>:'Kaydet'}</Button></div>
                 </CardContent>
@@ -239,10 +247,8 @@ export default function ProfilPage() {
               </Card>
 
               <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button variant="outline" className="w-full border-red-200 text-red-600 hover:bg-red-50 h-12 font-semibold">
-                    <Shield className="w-4 h-4 mr-2"/> Tüm Oturumlardan Çıkış Yap
-                  </Button>
+                <AlertDialogTrigger render={<Button variant="outline" className="w-full border-red-200 text-red-600 hover:bg-red-50 h-12 font-semibold" />}>
+                  <Shield className="w-4 h-4 mr-2"/> Tüm Oturumlardan Çıkış Yap
                 </AlertDialogTrigger>
                 <AlertDialogContent>
                   <AlertDialogHeader>

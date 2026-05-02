@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { usePremiumModal } from '@/context/PremiumModalContext';
+import { getPremiumHesapDurumu, premiumSatinAl } from '@/lib/api';
 
 type PaketId = 'temel_analiz' | 'uzman_gorusu' | 'premium_bundle';
 
@@ -37,25 +38,47 @@ export function PremiumModal() {
   const [secili, setSecili] = useState<PaketId | null>(null);
   const [loading, setLoading] = useState(false);
 
-  // Mock: mevcut talep durumu
-  const [talepDurum] = useState<'yok' | 'bekliyor' | 'onaylandi'>('yok');
+  const [talepDurum, setTalepDurum] = useState<'yok' | 'bekliyor' | 'onaylandi' | 'reddedildi'>('yok');
+  const [sonTalepTarihi, setSonTalepTarihi] = useState<string | null>(null);
 
   useEffect(() => {
     if (defaultPaket) setSecili(defaultPaket);
   }, [defaultPaket, isOpen]);
 
-  const handleGonder = () => {
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const loadDurum = async () => {
+      const durum = await getPremiumHesapDurumu();
+      setTalepDurum(durum.talepDurum);
+      setSonTalepTarihi(durum.talep?.created_at || null);
+      if (durum.paket) setSecili(durum.paket);
+    };
+
+    loadDurum();
+    window.addEventListener('premium-data-changed', loadDurum);
+    return () => window.removeEventListener('premium-data-changed', loadDurum);
+  }, [isOpen]);
+
+  const handleGonder = async () => {
     if (!secili) { toast.error('Lütfen bir paket seçin.'); return; }
     setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
+    try {
+      await premiumSatinAl(secili);
+      setTalepDurum('bekliyor');
+      setSonTalepTarihi(new Date().toISOString());
+      window.dispatchEvent(new Event('premium-data-changed'));
       closeModal();
       setSecili(null);
       toast.success('Talebiniz iletildi!', {
         description: 'Admin onayı sonrası erişiminiz aktifleşecektir.',
         duration: 5000,
       });
-    }, 1500);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Talep gonderilemedi.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -79,7 +102,7 @@ export function PremiumModal() {
               <div className="w-20 h-20 mx-auto bg-amber-100 rounded-full flex items-center justify-center"><Clock className="w-10 h-10 text-amber-600 animate-pulse" /></div>
               <h3 className="text-2xl font-bold">Talebiniz İnceleniyor</h3>
               <p className="text-slate-500 max-w-sm mx-auto">Admin onayı bekleniyor. Onaylandığında bildirim alacaksınız.</p>
-              <p className="text-xs text-slate-400">Son talep: 02 Mayıs 2024, 14:30</p>
+              {sonTalepTarihi && <p className="text-xs text-slate-400">Son talep: {new Date(sonTalepTarihi).toLocaleString('tr-TR')}</p>}
             </div>
           )}
 

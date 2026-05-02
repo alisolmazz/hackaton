@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useCallback } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -17,6 +17,8 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import { getCurrentUser } from '@/lib/auth';
+import { ocrFirmam, saveOcrFinansalTaslak } from '@/lib/api';
 
 // ZOD SCHEMA
 const firmaSchema = z.object({
@@ -37,15 +39,24 @@ type FirmaFormValues = z.infer<typeof firmaSchema>;
 // MOCK: Firma durumu. 'yok' | 'bekliyor' | 'onaylandi'
 type FirmaDurum = 'yok' | 'bekliyor' | 'onaylandi';
 
+function OcrTag({ field, fields }: { field: string; fields: Set<string> }) {
+  if (!fields.has(field)) return null;
+  return (
+    <Badge variant="outline" className="ml-2 bg-amber-50 text-amber-700 border-amber-200 text-[10px] shadow-none">
+      <Sparkles className="w-3 h-3 mr-1" /> AI ile dolduruldu
+    </Badge>
+  );
+}
+
 const MOCK_FIRMA = {
-  unvan: 'TechNova Yazılım A.Ş.',
+  unvan: '',
   vergiNo: '1234567890',
   sicilNo: '987654',
   kurulusTarihi: '2018-03-15',
   faaliyetAlani: 'Yazılım Geliştirme',
-  yetkiliKisi: 'Ahmet Yılmaz',
+  yetkiliKisi: '',
   telefon: '+90 532 123 45 67',
-  email: 'ahmet@technova.com',
+  email: '',
   adres: 'Maslak Mah. AOS 55. Sk. No:2 Sarıyer/İstanbul',
   yillikCiro: '12500000',
   // Sözleşme (readonly)
@@ -60,7 +71,7 @@ const MOCK_FIRMA = {
 
 export default function FirmaBilgileriPage() {
   // Mock durum — gerçekte API'den gelecek
-  const [durum] = useState<FirmaDurum>('onaylandi');
+  const [durum] = useState<FirmaDurum>('yok');
   const firmaVar = durum !== 'yok';
 
   // OCR State
@@ -91,39 +102,64 @@ export default function FirmaBilgileriPage() {
     } : {},
   });
 
-  // OCR İşlemi
-  const handleOcr = useCallback(() => {
+  useEffect(() => {
+    getCurrentUser().then(user => {
+      if (!user) return;
+      if (user.firmaAdi) setValue('unvan', user.firmaAdi);
+      if (user.name) setValue('yetkiliKisi', user.name);
+      setValue('email', user.email);
+    });
+  }, [setValue]);
+
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const applyOcrData = useCallback((file: File) => {
+    const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp'];
+    if (!allowedTypes.includes(file.type)) {
+      toast.error('Lütfen PDF, JPG, PNG veya WEBP formatında bir dosya seçin.');
+      return;
+    }
+
     setOcrLoading(true);
-    setOcrProgress(0);
+    setOcrProgress(20);
+    ocrFirmam(file)
+      .then(({ data }) => {
+        const filled = new Set<string>();
+        if (data.unvan) { setValue('unvan', data.unvan); filled.add('unvan'); }
+        if (data.vergi_no) { setValue('vergiNo', data.vergi_no); filled.add('vergiNo'); }
+        if (data.ticaret_sicil) { setValue('sicilNo', data.ticaret_sicil); filled.add('sicilNo'); }
+        if (data.kurulus_tarihi) { setValue('kurulusTarihi', data.kurulus_tarihi); filled.add('kurulusTarihi'); }
+        if (data.faaliyet_alani) { setValue('faaliyetAlani', data.faaliyet_alani); filled.add('faaliyetAlani'); }
+        if (data.yetkili_kisi) { setValue('yetkiliKisi', data.yetkili_kisi); filled.add('yetkiliKisi'); }
+        if (data.telefon) { setValue('telefon', data.telefon); filled.add('telefon'); }
+        if (data.adres) { setValue('adres', data.adres); filled.add('adres'); }
+        if (data.yillik_ciro) { setValue('yillikCiro', String(data.yillik_ciro)); filled.add('yillikCiro'); }
 
-    const interval = setInterval(() => {
-      setOcrProgress(prev => {
-        if (prev >= 100) {
-          clearInterval(interval);
-          setOcrLoading(false);
-
-          // Mock OCR sonuçları
-          setValue('unvan', 'OCR Yazılım Ltd. Şti.');
-          setValue('vergiNo', '9876543210');
-          setValue('sicilNo', '112233');
-          setValue('faaliyetAlani', 'Bilişim Hizmetleri');
-          setValue('yetkiliKisi', 'Elif Kaya');
-          setValue('adres', 'Levent Mah. Nispetiye Cd. No:5 Beşiktaş/İstanbul');
-
-          setOcrFields(new Set(['unvan', 'vergiNo', 'sicilNo', 'faaliyetAlani', 'yetkiliKisi', 'adres']));
-          toast.success('Belge başarıyla analiz edildi! Alanlar dolduruldu.');
-          return 100;
-        }
-        return prev + Math.random() * 15;
+        const finansalTaslak = saveOcrFinansalTaslak(data);
+        setOcrFields(filled);
+        setOcrProgress(100);
+        toast.success(finansalTaslak ? 'Belge analiz edildi; firma formu ve finansal rapor verileri dolduruldu.' : filled.size > 0 ? 'Belge analiz edildi, bulunan alanlar dolduruldu.' : 'Belge analiz edildi fakat forma uygun veri bulunamadi.');
+      })
+      .catch(error => {
+        toast.error(error instanceof Error ? error.message : 'Belge analiz edilemedi.');
+      })
+      .finally(() => {
+        setOcrLoading(false);
       });
-    }, 400);
   }, [setValue]);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     setDragOver(false);
-    handleOcr();
-  }, [handleOcr]);
+    const file = e.dataTransfer.files?.[0];
+    if (file) applyOcrData(file);
+  }, [applyOcrData]);
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) applyOcrData(file);
+    event.target.value = '';
+  };
 
   const onSubmit = (data: FirmaFormValues) => {
     setIsSubmitting(true);
@@ -135,16 +171,6 @@ export default function FirmaBilgileriPage() {
         toast.success('Bilgileriniz güncellendi.');
       }
     }, 1200);
-  };
-
-  // OCR badge helper
-  const OcrTag = ({ field }: { field: string }) => {
-    if (!ocrFields.has(field)) return null;
-    return (
-      <Badge variant="outline" className="ml-2 bg-amber-50 text-amber-700 border-amber-200 text-[10px] shadow-none">
-        <Sparkles className="w-3 h-3 mr-1" /> AI ile dolduruldu
-      </Badge>
-    );
   };
 
   return (
@@ -212,8 +238,15 @@ export default function FirmaBilgileriPage() {
             >
               <Upload className="w-10 h-10 mx-auto text-slate-400 mb-3" />
               <h4 className="font-bold text-lg text-slate-700 dark:text-slate-200">Belgeden Otomatik Doldur</h4>
-              <p className="text-sm text-slate-500 mt-1 mb-4">PDF, JPG veya PNG dosyanızı sürükleyin veya seçin (max 10MB)</p>
-              <Button variant="outline" onClick={handleOcr} className="border-teal-200 text-teal-700 hover:bg-teal-50">
+              <p className="text-sm text-slate-500 mt-1 mb-4">PDF, JPG, PNG veya WEBP dosyanızı sürükleyin veya seçin (max 15MB)</p>
+              <input
+                ref={fileInputRef}
+                type="file"
+                className="hidden"
+                accept=".pdf,image/jpeg,image/png,image/webp"
+                onChange={handleFileChange}
+              />
+              <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()} className="border-teal-200 text-teal-700 hover:bg-teal-50">
                 <FileText className="w-4 h-4 mr-2" /> Dosya Seç
               </Button>
             </div>
@@ -243,17 +276,17 @@ export default function FirmaBilgileriPage() {
               <h3 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider border-b pb-2">Temel Bilgiler</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div className="space-y-2">
-                  <Label className="flex items-center">Firma Ünvanı *<OcrTag field="unvan" /></Label>
+                  <Label className="flex items-center">Firma Ünvanı *<OcrTag field="unvan" fields={ocrFields} /></Label>
                   <Input {...register('unvan')} className="h-11" placeholder="Örn: ABC Yazılım A.Ş." />
                   {errors.unvan && <p className="text-xs text-red-500">{errors.unvan.message}</p>}
                 </div>
                 <div className="space-y-2">
-                  <Label className="flex items-center">Vergi Numarası *<OcrTag field="vergiNo" /></Label>
+                  <Label className="flex items-center">Vergi Numarası *<OcrTag field="vergiNo" fields={ocrFields} /></Label>
                   <Input {...register('vergiNo')} className="h-11" placeholder="10 haneli rakam" maxLength={10} />
                   {errors.vergiNo && <p className="text-xs text-red-500">{errors.vergiNo.message}</p>}
                 </div>
                 <div className="space-y-2">
-                  <Label className="flex items-center">Ticaret Sicil Numarası<OcrTag field="sicilNo" /></Label>
+                  <Label className="flex items-center">Ticaret Sicil Numarası<OcrTag field="sicilNo" fields={ocrFields} /></Label>
                   <Input {...register('sicilNo')} className="h-11" placeholder="Opsiyonel" />
                 </div>
                 <div className="space-y-2">
@@ -261,7 +294,7 @@ export default function FirmaBilgileriPage() {
                   <Input {...register('kurulusTarihi')} type="date" className="h-11" />
                 </div>
                 <div className="md:col-span-2 space-y-2">
-                  <Label className="flex items-center">Faaliyet Alanı<OcrTag field="faaliyetAlani" /></Label>
+                  <Label className="flex items-center">Faaliyet Alanı<OcrTag field="faaliyetAlani" fields={ocrFields} /></Label>
                   <Input {...register('faaliyetAlani')} className="h-11" placeholder="Örn: Yazılım Geliştirme" />
                 </div>
               </div>
@@ -272,7 +305,7 @@ export default function FirmaBilgileriPage() {
               <h3 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider border-b pb-2">İletişim Bilgileri</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div className="space-y-2">
-                  <Label className="flex items-center">Yetkili Kişi Adı *<OcrTag field="yetkiliKisi" /></Label>
+                  <Label className="flex items-center">Yetkili Kişi Adı *<OcrTag field="yetkiliKisi" fields={ocrFields} /></Label>
                   <Input {...register('yetkiliKisi')} className="h-11" placeholder="Adınız Soyadınız" />
                   {errors.yetkiliKisi && <p className="text-xs text-red-500">{errors.yetkiliKisi.message}</p>}
                 </div>
@@ -289,7 +322,7 @@ export default function FirmaBilgileriPage() {
                   <Input {...register('yillikCiro')} type="number" className="h-11" placeholder="Opsiyonel" />
                 </div>
                 <div className="md:col-span-2 space-y-2">
-                  <Label className="flex items-center">Adres<OcrTag field="adres" /></Label>
+                  <Label className="flex items-center">Adres<OcrTag field="adres" fields={ocrFields} /></Label>
                   <Textarea {...register('adres')} className="resize-none h-20" placeholder="Kayıtlı adres..." />
                 </div>
               </div>

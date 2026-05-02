@@ -10,7 +10,11 @@ export interface User {
   id: string;
   email: string;
   role: UserRole;
-  created_at: string;
+  name?: string;
+  firmaAdi?: string;
+  premium_aktif?: boolean;
+  premium_paket?: PremiumPaket | null;
+  created_at?: string;
 }
 
 export interface Firma {
@@ -85,9 +89,15 @@ export interface PremiumTalep {
   id: string;
   firma_id: string;
   firma?: Firma;
+  user_id?: string;
+  user_email?: string;
+  talep_eden?: string;
+  firma_adi?: string;
   paket_turu: PremiumPaket;
   durum: TalepDurum;
+  red_nedeni?: string;
   created_at: string;
+  updated_at?: string;
 }
 
 export interface PremiumErisim {
@@ -96,6 +106,18 @@ export interface PremiumErisim {
   ozellik: 'ai_analiz' | 'uzman_gorusu' | 'on_sunum';
   aktif: boolean;
   bitis_tarihi: string | null;
+}
+
+export interface UzmanAnalizTalebi {
+  id: string;
+  user_email: string;
+  talep_eden: string;
+  firma_adi: string;
+  durum: 'bekliyor' | 'tamamlandi';
+  finansal_veriler: Record<string, unknown>;
+  uzman_gorusu?: string;
+  created_at: string;
+  updated_at?: string;
 }
 
 export interface IslemLog {
@@ -130,6 +152,22 @@ export interface OcrSonucu {
   yetkili_kisi: string;
   telefon: string;
   adres: string;
+  yillik_ciro?: number;
+  finansal_rapor?: {
+    donem?: string;
+    toplam_gelir?: number;
+    toplam_gider?: number;
+    net_kar?: number;
+    toplam_varlik?: number;
+    toplam_borc?: number;
+    ozkaynak?: number;
+    nakit_ve_benzeri?: number;
+    bankalar?: Array<{ ad: string; bakiye: number; limit?: number; kullanim?: number; hesap?: string }>;
+    bekleyen_tahsilatlar?: Array<{ aciklama: string; vade: string; tutar: number; gecikme?: number }>;
+    yapilan_tahsilatlar?: Array<{ aciklama: string; tarih: string; tutar: number }>;
+    projeler?: Array<{ ad: string; baslangic: string; bitis?: string | null; tutar: number; durum: string }>;
+    donemsel_karsilastirma?: Array<{ d: string; gelir: number; gider: number }>;
+  };
 }
 
 export interface ApiResponse<T> {

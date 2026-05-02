@@ -138,7 +138,7 @@ export default function DashboardPage() {
                 <YAxis axisLine={false} tickLine={false} tickFormatter={(value) => `₺${value/1000}k`} />
                 <Tooltip 
                   cursor={{fill: 'rgba(0,0,0,0.05)'}} 
-                  formatter={(value) => `₺${value.toLocaleString('tr-TR')}`}
+                  formatter={(value) => `₺${Number(value).toLocaleString('tr-TR')}`}
                 />
                 <Legend iconType="circle" />
                 <Bar dataKey="gelir" name="Gelir" fill="#3b82f6" radius={[4, 4, 0, 0]} maxBarSize={40} />
@@ -178,7 +178,7 @@ export default function DashboardPage() {
                 ))}
               </div>
             ) : (
-              <EmptyState message="Henüz aktivite bulunmuyor" />
+              <EmptyState title="Henüz aktivite bulunmuyor" />
             )}
           </CardContent>
         </Card>
@@ -219,7 +219,7 @@ export default function DashboardPage() {
               </Link>
             ))
           ) : (
-             <EmptyState message="Firma bulunamadı" />
+             <EmptyState title="Firma bulunamadı" />
           )}
         </div>
       </div>

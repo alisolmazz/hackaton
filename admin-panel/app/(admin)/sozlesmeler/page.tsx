@@ -60,10 +60,8 @@ export default function SozlesmelerPage() {
             <FileSpreadsheet className="w-4 h-4 mr-2" /> Excel'e Aktar
           </Button>
           <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-            <DialogTrigger asChild>
-              <Button className="bg-blue-600 hover:bg-blue-700 text-white shadow-md">
-                <Plus className="w-4 h-4 mr-2" /> Yeni Sözleşme
-              </Button>
+            <DialogTrigger render={<Button className="bg-blue-600 hover:bg-blue-700 text-white shadow-md" />}>
+              <Plus className="w-4 h-4 mr-2" /> Yeni Sözleşme
             </DialogTrigger>
             <DialogContent>
               <DialogHeader><DialogTitle>Yeni Sözleşme Ekle</DialogTitle></DialogHeader>

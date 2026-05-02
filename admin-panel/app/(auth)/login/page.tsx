@@ -30,11 +30,17 @@ export default function LoginPage() {
 
   const onSubmit = async (data: LoginFormValues) => {
     try {
-      await login(data.email, data.password);
+      const response = await login(data.email, data.password);
+      const role = response.user?.user_metadata?.role || (data.email === 'admin@prosicht.com' ? 'admin' : 'user');
+      
       toast.success('Giriş başarılı, yönlendiriliyorsunuz...');
-      router.push('/dashboard');
+      if (role === 'admin') {
+        router.push('/dashboard');
+      } else {
+        router.push('/user/dashboard');
+      }
     } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Giriş başarısız. Lütfen bilgilerinizi kontrol edin.');
+      toast.error(error.message || 'Giriş başarısız. Lütfen bilgilerinizi kontrol edin.');
     }
   };
 
@@ -120,7 +126,7 @@ export default function LoginPage() {
                 {errors.password && <p className="text-red-500 text-xs font-medium mt-1">{errors.password.message}</p>}
               </div>
 
-              <div className="pt-2">
+              <div className="pt-2 space-y-4">
                 <Button 
                   type="submit" 
                   className="w-full h-11 bg-blue-600 hover:bg-blue-700 active:scale-[0.98] text-white font-semibold text-base transition-all"
@@ -129,6 +135,13 @@ export default function LoginPage() {
                   {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : null}
                   {isSubmitting ? 'Giriş Yapılıyor...' : 'Giriş Yap'}
                 </Button>
+
+                <p className="text-center text-sm text-slate-500 dark:text-slate-400">
+                  Henüz bir hesabınız yok mu?{' '}
+                  <a href="/register" className="text-blue-600 hover:text-blue-700 dark:text-blue-400 font-semibold transition-colors">
+                    Hemen Kayıt Olun
+                  </a>
+                </p>
               </div>
             </form>
           </CardContent>

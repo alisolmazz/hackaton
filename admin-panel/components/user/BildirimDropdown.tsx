@@ -41,15 +41,13 @@ export function BildirimDropdown() {
 
   return (
     <Popover>
-      <PopoverTrigger asChild>
-        <Button variant="ghost" size="icon" className="relative text-slate-500 hover:text-teal-700">
-          <Bell className="h-5 w-5" />
-          {unreadCount > 0 && (
-            <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1 border-2 border-white dark:border-slate-900 animate-pulse">
-              {unreadCount}
-            </span>
-          )}
-        </Button>
+      <PopoverTrigger render={<Button variant="ghost" size="icon" className="relative text-slate-500 hover:text-teal-700" />}>
+        <Bell className="h-5 w-5" />
+        {unreadCount > 0 && (
+          <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1 border-2 border-white dark:border-slate-900 animate-pulse">
+            {unreadCount}
+          </span>
+        )}
       </PopoverTrigger>
       <PopoverContent align="end" className="w-[380px] p-0">
         {/* Header */}

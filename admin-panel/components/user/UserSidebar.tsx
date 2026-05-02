@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { 
@@ -11,6 +11,9 @@ import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Button } from '@/components/ui/button';
 import { usePremiumModal } from '@/context/PremiumModalContext';
+import { getCurrentUser, logout } from '@/lib/auth';
+import { getPremiumHesapDurumu } from '@/lib/api';
+import type { User as AppUser } from '@/types';
 
 const MENU_GENEL = [
   { icon: LayoutDashboard, label: 'Ana Sayfa', href: '/user/dashboard' },
@@ -24,8 +27,8 @@ const MENU_FIRMAM = [
 ];
 
 const MENU_PREMIUM_LOCKED = [
-  { icon: BrainCircuit, label: 'AI Analiz', locked: true },
-  { icon: Sparkles, label: 'Uzman Görüşü', locked: true },
+  { icon: BrainCircuit, label: 'AI Analiz', href: '/user/finansal-rapor' },
+  { icon: Sparkles, label: 'Uzman Görüşü', href: '/user/finansal-rapor' },
 ];
 
 const MENU_HESAP = [
@@ -36,13 +39,26 @@ export function UserSidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const { openModal } = usePremiumModal();
+  const [hasPremium, setHasPremium] = useState(false);
+  const [user, setUser] = useState<AppUser | null>(null);
 
-  const firmaAdi = 'TechNova Yazılım A.Ş.'; // API'den gelecek
+  const firmaAdi = user?.firmaAdi || 'Yeni şirket';
 
-  const handleLogout = () => {
-    document.cookie = "fintech_auth_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
-    router.push('/login');
+  const handleLogout = async () => {
+    await logout();
   };
+
+  useEffect(() => {
+    const loadPremium = async () => {
+      const durum = await getPremiumHesapDurumu();
+      setHasPremium(durum.hasPremium);
+      setUser(await getCurrentUser());
+    };
+
+    loadPremium();
+    window.addEventListener('premium-data-changed', loadPremium);
+    return () => window.removeEventListener('premium-data-changed', loadPremium);
+  }, []);
 
   const NavLink = ({ item }: { item: { icon: any; label: string; href: string } }) => {
     const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
@@ -63,7 +79,7 @@ export function UserSidebar() {
   };
 
   return (
-    <TooltipProvider delayDuration={200}>
+    <TooltipProvider delay={200}>
       <div className="h-screen w-[260px] bg-[#0f4c3a] text-white flex flex-col fixed left-0 top-0 border-r border-[#0a3528] z-40 hidden md:flex shadow-2xl">
 
         {/* LOGO */}
@@ -105,18 +121,13 @@ export function UserSidebar() {
             </div>
             {MENU_PREMIUM_LOCKED.map(item => (
               <Tooltip key={item.label}>
-                <TooltipTrigger asChild>
-                  <button
-                    onClick={() => openModal()}
-                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-teal-100/30 hover:bg-white/5 hover:text-teal-100/50 transition-all border border-transparent cursor-pointer"
-                  >
-                    <item.icon className="h-[18px] w-[18px] text-teal-400/20" />
-                    {item.label}
-                    <Lock className="h-3.5 w-3.5 ml-auto text-amber-400/50" />
-                  </button>
+                <TooltipTrigger render={<button onClick={() => hasPremium ? router.push(item.href) : openModal()} className={cn("w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all border border-transparent cursor-pointer", hasPremium ? "text-teal-100 hover:bg-white/5" : "text-teal-100/30 hover:bg-white/5 hover:text-teal-100/50")} />}>
+                  <item.icon className={cn("h-[18px] w-[18px]", hasPremium ? "text-amber-300" : "text-teal-400/20")} />
+                  {item.label}
+                  {hasPremium ? <Crown className="h-3.5 w-3.5 ml-auto text-amber-300" /> : <Lock className="h-3.5 w-3.5 ml-auto text-amber-400/50" />}
                 </TooltipTrigger>
                 <TooltipContent side="right" className="bg-slate-900 text-white border-slate-800">
-                  <p className="text-xs">Premium özellik — Talep oluşturun</p>
+                  <p className="text-xs">{hasPremium ? 'Premium aktif' : 'Premium ozellik - Talep olusturun'}</p>
                 </TooltipContent>
               </Tooltip>
             ))}
@@ -143,8 +154,8 @@ export function UserSidebar() {
               AY
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-teal-100 truncate">Ahmet Yılmaz</p>
-              <p className="text-[11px] text-teal-200/40 truncate">ahmet@technova.com</p>
+              <p className="text-sm font-semibold text-teal-100 truncate">{user?.name || 'Kullanıcı'}</p>
+              <p className="text-[11px] text-teal-200/40 truncate">{user?.email || ''}</p>
             </div>
             <button onClick={handleLogout} className="p-2 rounded-lg hover:bg-red-500/20 text-teal-200/40 hover:text-red-400 transition-colors" title="Çıkış Yap">
               <LogOut className="h-4 w-4" />

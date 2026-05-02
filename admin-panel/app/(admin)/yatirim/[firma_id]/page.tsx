@@ -9,7 +9,7 @@ import * as z from 'zod';
 import { getFirma } from '@/lib/api';
 import { 
   Briefcase, TrendingUp, TrendingDown, Target, AlertTriangle, ArrowRight,
-  ChevronLeft, Plus, RefreshCw, Info, Calendar, PlusCircle, CheckCircle2, ChevronUp, ChevronDown
+  ChevronLeft, Plus, RefreshCw, Info, Calendar, PlusCircle, CheckCircle2, ChevronUp, ChevronDown, Clock
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { tr } from 'date-fns/locale';
@@ -99,7 +99,7 @@ export default function YatirimPortfoyuPage() {
   const firma = firmaResponse?.data;
 
   const form = useForm<YatirimFormValues>({
-    resolver: zodResolver(yatirimSchema),
+    resolver: zodResolver(yatirimSchema) as any,
     defaultValues: {
       ad: '', tur: '', tarih: '', alis: 0, guncel: 0, risk: '', notlar: ''
     }
@@ -219,10 +219,8 @@ export default function YatirimPortfoyuPage() {
                 <CardDescription>Mevcut portföydeki açık pozisyonlar</CardDescription>
               </div>
               <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-                <DialogTrigger asChild>
-                  <Button size="sm" className="bg-blue-600 hover:bg-blue-700 shadow-sm text-white">
-                    <Plus className="w-4 h-4 mr-1" /> Yatırım Ekle
-                  </Button>
+                <DialogTrigger render={<Button size="sm" className="bg-blue-600 hover:bg-blue-700 shadow-sm text-white" />}>
+                  <Plus className="w-4 h-4 mr-1" /> Yatırım Ekle
                 </DialogTrigger>
                 <DialogContent className="sm:max-w-[600px]">
                   <DialogHeader>

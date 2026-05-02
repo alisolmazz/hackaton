@@ -170,7 +170,7 @@ export default function OnSunumPage() {
               
               <div className="space-y-2">
                 <Label>Dönem Seçimi</Label>
-                <Select value={donem} onValueChange={setDonem}>
+                <Select value={donem} onValueChange={(val) => val && setDonem(val)}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>

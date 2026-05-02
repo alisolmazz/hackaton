@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { 
   AlertCircle, CheckCircle2, XCircle, Search, Calendar as CalendarIcon, 
@@ -19,22 +19,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
-
-// MOCK DATA
-const INITIAL_TALEPLER = [
-  { id: 1, firmaId: '101', firmaAdi: 'TechNova Yazılım', talepEden: 'Ahmet Yılmaz', paket: 'Premium Bundle', tarih: '2024-05-01T10:30:00Z', durum: 'bekliyor' },
-  { id: 2, firmaId: '102', firmaAdi: 'Global Lojistik A.Ş.', talepEden: 'Ayşe Kaya', paket: 'Uzman Görüşü', tarih: '2024-04-28T14:15:00Z', durum: 'bekliyor' },
-  { id: 3, firmaId: '103', firmaAdi: 'Apex Üretim', talepEden: 'Mehmet Demir', paket: 'Temel Analiz', tarih: '2024-04-25T09:00:00Z', durum: 'onaylandi' },
-  { id: 4, firmaId: '104', firmaAdi: 'Zirve E-Ticaret', talepEden: 'Zeynep Çelik', paket: 'Premium Bundle', tarih: '2024-04-20T16:45:00Z', durum: 'reddedildi' },
-  { id: 5, firmaId: '105', firmaAdi: 'Nova Sağlık', talepEden: 'Burak Can', paket: 'Uzman Görüşü', tarih: '2024-05-02T11:20:00Z', durum: 'bekliyor' },
-];
+import { getPremiumTalepler, onaylaTalep, PREMIUM_PAKET_ADLARI, reddettTalep } from '@/lib/api';
+import type { PremiumTalep } from '@/types';
 
 export default function PremiumTaleplerPage() {
   const router = useRouter();
   
   // States (Mocking react-query cache for optimistic updates)
-  const [talepler, setTalepler] = useState(INITIAL_TALEPLER);
+  const [talepler, setTalepler] = useState<PremiumTalep[]>([]);
   
   // Filters
   const [arama, setArama] = useState('');
@@ -42,12 +36,23 @@ export default function PremiumTaleplerPage() {
   const [paketFiltre, setPaketFiltre] = useState('tumu');
 
   // Modals / Dialogs
-  const [onayDialog, setOnayDialog] = useState<{open: boolean, id: number | null}>({ open: false, id: null });
-  const [redModal, setRedModal] = useState<{open: boolean, id: number | null}>({ open: false, id: null });
+  const [onayDialog, setOnayDialog] = useState<{open: boolean, id: string | null}>({ open: false, id: null });
+  const [redModal, setRedModal] = useState<{open: boolean, id: string | null}>({ open: false, id: null });
   const [redNedeni, setRedNedeni] = useState('');
   
   // Sheet
-  const [seciliTalep, setSeciliTalep] = useState<any>(null);
+  const [seciliTalep, setSeciliTalep] = useState<PremiumTalep | null>(null);
+
+  useEffect(() => {
+    const loadTalepler = async () => {
+      const response = await getPremiumTalepler();
+      setTalepler(response.data);
+    };
+
+    loadTalepler();
+    window.addEventListener('premium-data-changed', loadTalepler);
+    return () => window.removeEventListener('premium-data-changed', loadTalepler);
+  }, []);
 
   // Stats
   const bekleyenSayisi = talepler.filter(t => t.durum === 'bekliyor').length;
@@ -56,22 +61,22 @@ export default function PremiumTaleplerPage() {
 
   const filteredTalepler = useMemo(() => {
     return talepler.filter(t => {
-      const matchArama = t.firmaAdi.toLowerCase().includes(arama.toLowerCase());
+      const matchArama = (t.firma_adi || t.firma?.unvan || '').toLowerCase().includes(arama.toLowerCase());
       const matchDurum = durumFiltre === 'tumu' || t.durum === durumFiltre;
-      const matchPaket = paketFiltre === 'tumu' || t.paket === paketFiltre;
+      const matchPaket = paketFiltre === 'tumu' || t.paket_turu === paketFiltre;
       return matchArama && matchDurum && matchPaket;
     });
   }, [talepler, arama, durumFiltre, paketFiltre]);
 
-  const handleOnayla = () => {
+  const handleOnayla = async () => {
     if (!onayDialog.id) return;
     
-    // Optimistic Update
+    await onaylaTalep(onayDialog.id);
     setTalepler(prev => prev.map(t => t.id === onayDialog.id ? { ...t, durum: 'onaylandi' } : t));
     
     // Eğer detay paneli açıksa ve onaylanan elemansa onu da güncelle
     if (seciliTalep?.id === onayDialog.id) {
-      setSeciliTalep((prev: any) => ({ ...prev, durum: 'onaylandi' }));
+      setSeciliTalep(prev => prev ? ({ ...prev, durum: 'onaylandi' }) : prev);
     }
 
     toast.success('Premium erişim aktifleştirildi!', {
@@ -80,14 +85,15 @@ export default function PremiumTaleplerPage() {
     setOnayDialog({ open: false, id: null });
   };
 
-  const handleReddet = (e: React.FormEvent) => {
+  const handleReddet = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!redModal.id) return;
 
+    await reddettTalep(redModal.id, redNedeni);
     setTalepler(prev => prev.map(t => t.id === redModal.id ? { ...t, durum: 'reddedildi' } : t));
     
     if (seciliTalep?.id === redModal.id) {
-      setSeciliTalep((prev: any) => ({ ...prev, durum: 'reddedildi' }));
+      setSeciliTalep(prev => prev ? ({ ...prev, durum: 'reddedildi', red_nedeni: redNedeni }) : prev);
     }
 
     toast.error('Talep reddedildi.');
@@ -95,12 +101,16 @@ export default function PremiumTaleplerPage() {
     setRedNedeni('');
   };
 
-  const getPaketBadge = (paket: string) => {
-    switch (paket) {
-      case 'Temel Analiz': return <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">Temel Analiz</Badge>;
-      case 'Uzman Görüşü': return <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">Uzman Görüşü</Badge>;
-      case 'Premium Bundle': return <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 shadow-sm border">Premium Bundle</Badge>;
-      default: return <Badge variant="outline">{paket}</Badge>;
+  const getFirmaAdi = (talep: PremiumTalep) => talep.firma_adi || talep.firma?.unvan || 'Firma bilgisi yok';
+  const getTalepEden = (talep: PremiumTalep) => talep.talep_eden || talep.user_email || 'Kullanici bilgisi yok';
+  const getPaketAdi = (talep: PremiumTalep) => PREMIUM_PAKET_ADLARI[talep.paket_turu] || talep.paket_turu;
+
+  const getPaketBadge = (talep: PremiumTalep) => {
+    switch (talep.paket_turu) {
+      case 'temel_analiz': return <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">Temel Analiz</Badge>;
+      case 'uzman_gorusu': return <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">Uzman Gorusu</Badge>;
+      case 'premium_bundle': return <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 shadow-sm border">Premium Bundle</Badge>;
+      default: return <Badge variant="outline">{getPaketAdi(talep)}</Badge>;
     }
   };
 
@@ -165,7 +175,7 @@ export default function PremiumTaleplerPage() {
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-500" />
                 <Input placeholder="Firma ara..." className="pl-9 bg-slate-50" value={arama} onChange={e => setArama(e.target.value)} />
               </div>
-              <Select value={durumFiltre} onValueChange={setDurumFiltre}>
+              <Select value={durumFiltre} onValueChange={(val) => val && setDurumFiltre(val)}>
                 <SelectTrigger className="w-[140px]"><SelectValue placeholder="Durum" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="tumu">Tümü (Durum)</SelectItem>
@@ -174,13 +184,13 @@ export default function PremiumTaleplerPage() {
                   <SelectItem value="reddedildi">Reddedilenler</SelectItem>
                 </SelectContent>
               </Select>
-              <Select value={paketFiltre} onValueChange={setPaketFiltre}>
+              <Select value={paketFiltre} onValueChange={(val) => val && setPaketFiltre(val)}>
                 <SelectTrigger className="w-[180px]"><SelectValue placeholder="Paket" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="tumu">Tümü (Paket)</SelectItem>
-                  <SelectItem value="Temel Analiz">Temel Analiz</SelectItem>
-                  <SelectItem value="Uzman Görüşü">Uzman Görüşü</SelectItem>
-                  <SelectItem value="Premium Bundle">Premium Bundle</SelectItem>
+                  <SelectItem value="temel_analiz">Temel Analiz</SelectItem>
+                  <SelectItem value="uzman_gorusu">Uzman Gorusu</SelectItem>
+                  <SelectItem value="premium_bundle">Premium Bundle</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -209,13 +219,13 @@ export default function PremiumTaleplerPage() {
                     onClick={() => setSeciliTalep(t)}
                   >
                     <TableCell className="pl-6">
-                      <span className="font-bold hover:underline text-blue-600" onClick={(e) => { e.stopPropagation(); router.push(`/firmalar/${t.firmaId}`); }}>
-                        {t.firmaAdi}
+                      <span className="font-bold hover:underline text-blue-600" onClick={(e) => { e.stopPropagation(); router.push(`/firmalar/${t.firma_id}`); }}>
+                        {getFirmaAdi(t)}
                       </span>
                     </TableCell>
-                    <TableCell className="text-slate-600 font-medium">{t.talepEden}</TableCell>
-                    <TableCell>{getPaketBadge(t.paket)}</TableCell>
-                    <TableCell className="text-sm">{format(new Date(t.tarih), 'dd MMM yyyy, HH:mm', {locale:tr})}</TableCell>
+                    <TableCell className="text-slate-600 font-medium">{getTalepEden(t)}</TableCell>
+                    <TableCell>{getPaketBadge(t)}</TableCell>
+                    <TableCell className="text-sm">{format(new Date(t.created_at), 'dd MMM yyyy, HH:mm', {locale:tr})}</TableCell>
                     <TableCell>{getDurumBadge(t.durum)}</TableCell>
                     <TableCell className="text-right pr-6" onClick={(e) => e.stopPropagation()}>
                       {t.durum === 'bekliyor' ? (
@@ -244,10 +254,10 @@ export default function PremiumTaleplerPage() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2"><ShieldCheck className="w-5 h-5 text-emerald-600"/> Talebi Onaylayacaksınız</AlertDialogTitle>
-            <AlertDialogDescription className="pt-2 text-base text-slate-700 dark:text-slate-300 space-y-2">
-              <p>Firma: <strong className="text-slate-900 dark:text-white">{talepler.find(t=>t.id===onayDialog.id)?.firmaAdi}</strong></p>
-              <p>Paket: <strong>{talepler.find(t=>t.id===onayDialog.id)?.paket}</strong></p>
-              <p className="mt-4 text-sm text-slate-500">Bu işlem firma için ilgili premium özellik erişimini hemen aktif edecektir.</p>
+            <AlertDialogDescription className="pt-2 text-base text-slate-700 dark:text-slate-300 space-y-2 flex flex-col">
+              <span>Firma: <strong className="text-slate-900 dark:text-white">{talepler.find(t=>t.id===onayDialog.id) ? getFirmaAdi(talepler.find(t=>t.id===onayDialog.id)!) : ''}</strong></span>
+              <span>Paket: <strong>{talepler.find(t=>t.id===onayDialog.id) ? getPaketAdi(talepler.find(t=>t.id===onayDialog.id)!) : ''}</strong></span>
+              <span className="mt-4 text-sm text-slate-500 block">Bu işlem firma için ilgili premium özellik erişimini hemen aktif edecektir.</span>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -293,10 +303,10 @@ export default function PremiumTaleplerPage() {
               {/* Firma Info */}
               <div className="flex items-center gap-4">
                 <div className="w-16 h-16 bg-slate-100 rounded-lg flex items-center justify-center border border-slate-200">
-                  <span className="font-black text-xl text-slate-400">{seciliTalep.firmaAdi.substring(0,2).toUpperCase()}</span>
+                  <span className="font-black text-xl text-slate-400">{getFirmaAdi(seciliTalep).substring(0,2).toUpperCase()}</span>
                 </div>
                 <div>
-                  <h3 className="font-bold text-xl">{seciliTalep.firmaAdi}</h3>
+                  <h3 className="font-bold text-xl">{getFirmaAdi(seciliTalep)}</h3>
                   <p className="text-slate-500 text-sm flex items-center gap-1"><CalendarIcon className="w-3 h-3"/> VKN: 1234567890</p>
                 </div>
               </div>
@@ -305,15 +315,15 @@ export default function PremiumTaleplerPage() {
               <div className="bg-slate-50 dark:bg-slate-900 p-4 rounded-xl space-y-4 border border-slate-100 dark:border-slate-800">
                 <div className="flex justify-between items-center">
                   <span className="text-sm font-medium text-slate-500">Talep Eden</span>
-                  <span className="font-semibold">{seciliTalep.talepEden}</span>
+                  <span className="font-semibold">{getTalepEden(seciliTalep)}</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-sm font-medium text-slate-500">Talep Tarihi</span>
-                  <span className="font-semibold">{format(new Date(seciliTalep.tarih), 'dd MMMM yyyy HH:mm', {locale:tr})}</span>
+                  <span className="font-semibold">{format(new Date(seciliTalep.created_at), 'dd MMMM yyyy HH:mm', {locale:tr})}</span>
                 </div>
                 <div className="flex justify-between items-center pt-2 border-t border-slate-200 dark:border-slate-700">
                   <span className="text-sm font-medium text-slate-500">Paket</span>
-                  {getPaketBadge(seciliTalep.paket)}
+                  {getPaketBadge(seciliTalep)}
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-sm font-medium text-slate-500">Güncel Durum</span>

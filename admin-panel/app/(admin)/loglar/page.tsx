@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { Suspense, useState, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { 
   Activity, Search, ShieldAlert, Cpu, CheckCircle2, XCircle, 
@@ -19,6 +19,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Legend } from 'recharts';
 
 // --- MOCK DATA ---
@@ -56,7 +57,7 @@ const HATA_LOGLARI = [
   { id: 3, zaman: new Date(Date.now() - 5600000).toISOString(), endpoint: '/api/firmalar/999', kod: 404, tur: 'NotFound', kullanici: 'ahmet@pro.com', cozuldu: false, stack: 'NotFound: Kayıt bulunamadı.' },
 ];
 
-export default function LoglarPage() {
+function LoglarContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -157,7 +158,7 @@ export default function LoglarPage() {
                     <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-500" />
                     <Input placeholder="Log ID veya Kullanıcı..." className="pl-9 bg-slate-50" value={arama} onChange={e => setArama(e.target.value)} />
                   </div>
-                  <Select value={filterType} onValueChange={handleTypeChange}>
+                  <Select value={filterType} onValueChange={(val) => val && handleTypeChange(val)}>
                     <SelectTrigger className="w-[140px]"><SelectValue placeholder="İşlem Türü" /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="tumu">Tümü</SelectItem>
@@ -422,5 +423,13 @@ export default function LoglarPage() {
         </TabsContent>
       </Tabs>
     </div>
+  );
+}
+
+export default function LoglarPage() {
+  return (
+    <Suspense fallback={<div className="p-6 text-sm text-slate-500">Loglar yukleniyor...</div>}>
+      <LoglarContent />
+    </Suspense>
   );
 }

@@ -30,7 +30,8 @@ export default function FirmalarPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
-  const { data: firmalar, isLoading } = useFirmalar();
+  const { data: response, isLoading } = useFirmalar();
+  const firmalar = response?.data;
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => deleteFirma(id),
@@ -102,7 +103,7 @@ export default function FirmalarPage() {
           />
         </div>
         <div className="flex flex-col sm:flex-row gap-4">
-          <Select value={sozlesmeFiltre} onValueChange={(val) => { setSozlesmeFiltre(val); setCurrentPage(1); }}>
+          <Select value={sozlesmeFiltre} onValueChange={(val) => { if (val) { setSozlesmeFiltre(val); setCurrentPage(1); } }}>
             <SelectTrigger className="w-full sm:w-[180px] h-10">
               <SelectValue placeholder="Sözleşme Türü" />
             </SelectTrigger>
@@ -115,7 +116,7 @@ export default function FirmalarPage() {
             </SelectContent>
           </Select>
 
-          <Select value={onayFiltre} onValueChange={(val) => { setOnayFiltre(val); setCurrentPage(1); }}>
+          <Select value={onayFiltre} onValueChange={(val) => { if (val) { setOnayFiltre(val); setCurrentPage(1); } }}>
             <SelectTrigger className="w-full sm:w-[160px] h-10">
               <SelectValue placeholder="Durum" />
             </SelectTrigger>
@@ -158,7 +159,7 @@ export default function FirmalarPage() {
               // Boş Durum
               <TableRow>
                 <TableCell colSpan={6} className="h-[400px]">
-                  <EmptyState message="Henüz firma eklenmemiş veya arama kriterine uygun kayıt yok." />
+                  <EmptyState title="Henüz firma eklenmemiş veya arama kriterine uygun kayıt yok." />
                 </TableCell>
               </TableRow>
             ) : (
@@ -205,10 +206,8 @@ export default function FirmalarPage() {
                         <Edit2 className="h-4 w-4" />
                       </Button>
                       <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button variant="ghost" size="icon" className="text-slate-500 hover:text-red-600">
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                        <AlertDialogTrigger render={<Button variant="ghost" size="icon" className="text-slate-500 hover:text-red-600" />}>
+                          <Trash2 className="h-4 w-4" />
                         </AlertDialogTrigger>
                         <AlertDialogContent>
                           <AlertDialogHeader>

@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { usePathname, useRouter } from 'next/navigation';
 import { useTheme } from 'next-themes';
+import { logout } from '@/lib/auth';
 
 const PAGE_TITLES: Record<string, string> = {
   '/user/dashboard': 'Ana Sayfa',
@@ -28,12 +29,16 @@ export function UserHeader() {
   const router = useRouter();
   const pathname = usePathname();
   const { theme, setTheme } = useTheme();
+  const [mounted, setMounted] = React.useState(false);
+
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const pageTitle = PAGE_TITLES[pathname] || 'Müşteri Paneli';
 
-  const handleLogout = () => {
-    document.cookie = "fintech_auth_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
-    router.push('/login');
+  const handleLogout = async () => {
+    await logout();
   };
 
   return (
@@ -57,7 +62,7 @@ export function UserHeader() {
           className="text-slate-500 hover:text-teal-700"
           onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
         >
-          {theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+          {mounted && theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
         </Button>
 
         {/* Bildirimler */}
@@ -65,10 +70,8 @@ export function UserHeader() {
 
         {/* Avatar Dropdown */}
         <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="relative h-9 w-9 rounded-full bg-teal-100 dark:bg-teal-900/50 hover:bg-teal-200 dark:hover:bg-teal-800/50 ml-1">
-              <span className="font-bold text-teal-800 dark:text-teal-200 text-sm">AY</span>
-            </Button>
+          <DropdownMenuTrigger render={<Button variant="ghost" className="relative h-9 w-9 rounded-full bg-teal-100 dark:bg-teal-900/50 hover:bg-teal-200 dark:hover:bg-teal-800/50 ml-1" />}>
+            <span className="font-bold text-teal-800 dark:text-teal-200 text-sm">AY</span>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56">
             <DropdownMenuLabel>

@@ -7,6 +7,7 @@ import { Menu, Sun, Moon, Bell } from 'lucide-react';
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
+  DropdownMenuGroup,
   DropdownMenuItem, 
   DropdownMenuLabel, 
   DropdownMenuSeparator, 
@@ -32,6 +33,7 @@ export default function Header({ setMobileMenuOpen }: HeaderProps) {
     if (pathname.includes('/firmalarimiz')) return 'Firmalarımız / Mali Yapımız';
     if (pathname.includes('/sozlesmeler')) return 'Sözleşmeler';
     if (pathname.includes('/premium-talepler')) return 'Premium Talepler';
+    if (pathname.includes('/uzman-analiz')) return 'Uzman Analiz Talepleri';
     if (pathname.includes('/loglar')) return 'İşlem Logları';
     if (pathname.includes('/finansal-rapor')) return 'Finansal Rapor Detayı';
     return 'Pro Sicht Admin';
@@ -75,22 +77,22 @@ export default function Header({ setMobileMenuOpen }: HeaderProps) {
 
         {/* Kullanıcı Dropdown */}
         <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="relative h-9 w-9 rounded-full ml-2 hover:bg-transparent">
-              <Avatar className="h-9 w-9 border border-slate-200 dark:border-slate-700 shadow-sm transition-transform hover:scale-105">
-                <AvatarFallback className="bg-gradient-to-tr from-blue-600 to-blue-400 text-white font-semibold">
-                  AD
-                </AvatarFallback>
-              </Avatar>
-            </Button>
+          <DropdownMenuTrigger render={<Button variant="ghost" className="relative h-9 w-9 rounded-full ml-2 hover:bg-transparent" />}>
+            <Avatar className="h-9 w-9 border border-slate-200 dark:border-slate-700 shadow-sm transition-transform hover:scale-105">
+              <AvatarFallback className="bg-gradient-to-tr from-blue-600 to-blue-400 text-white font-semibold">
+                AD
+              </AvatarFallback>
+            </Avatar>
           </DropdownMenuTrigger>
-          <DropdownMenuContent className="w-56" align="end" forceMount>
-            <DropdownMenuLabel className="font-normal">
-              <div className="flex flex-col space-y-1">
-                <p className="text-sm font-medium leading-none text-slate-800 dark:text-slate-200">Admin Kullanıcı</p>
-                <p className="text-xs leading-none text-slate-500 dark:text-slate-400">admin@prosicht.com</p>
-              </div>
-            </DropdownMenuLabel>
+          <DropdownMenuContent className="w-56" align="end">
+            <DropdownMenuGroup>
+              <DropdownMenuLabel className="font-normal">
+                <div className="flex flex-col space-y-1">
+                  <p className="text-sm font-medium leading-none text-slate-800 dark:text-slate-200">Admin Kullanıcı</p>
+                  <p className="text-xs leading-none text-slate-500 dark:text-slate-400">admin@prosicht.com</p>
+                </div>
+              </DropdownMenuLabel>
+            </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={logout} className="text-red-600 dark:text-red-400 cursor-pointer focus:text-red-600 dark:focus:text-red-400 font-medium">
               Çıkış Yap

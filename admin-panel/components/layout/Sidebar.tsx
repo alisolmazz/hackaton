@@ -9,13 +9,15 @@ import {
   PlusCircle, 
   Briefcase, 
   FileText, 
-  Crown, 
+  Crown,
+  UserCheck,
   ClipboardList,
   LogOut
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getCurrentUser, logout } from '@/lib/auth';
 import { User } from '@/types';
+import { getPremiumTalepler, getUzmanAnalizTalepleri } from '@/lib/api';
 
 interface SidebarProps {
   mobile?: boolean;
@@ -26,11 +28,24 @@ export default function Sidebar({ mobile, setMobileMenuOpen }: SidebarProps) {
   const pathname = usePathname();
   const [user, setUser] = useState<User | null>(null);
   
-  // Örnek: Backend'den çekilecek bekleyen premium talep sayısı
-  const pendingPremiumRequests = 3;
+  const [pendingPremiumRequests, setPendingPremiumRequests] = useState(0);
+  const [pendingExpertRequests, setPendingExpertRequests] = useState(0);
 
   useEffect(() => {
-    setUser(getCurrentUser());
+    getCurrentUser().then(userData => {
+      setUser(userData);
+    });
+
+    const loadPendingPremiumRequests = async () => {
+      const response = await getPremiumTalepler();
+      setPendingPremiumRequests(response.data.filter(talep => talep.durum === 'bekliyor').length);
+      const uzmanTalepleri = await getUzmanAnalizTalepleri();
+      setPendingExpertRequests(uzmanTalepleri.filter(talep => talep.durum === 'bekliyor').length);
+    };
+
+    loadPendingPremiumRequests();
+    window.addEventListener('premium-data-changed', loadPendingPremiumRequests);
+    return () => window.removeEventListener('premium-data-changed', loadPendingPremiumRequests);
   }, []);
 
   const handleNavClick = () => {
@@ -59,6 +74,7 @@ export default function Sidebar({ mobile, setMobileMenuOpen }: SidebarProps) {
         { title: 'Firmalarımız / Mali Yapımız', href: '/firmalarimiz', icon: Briefcase },
         { title: 'Sözleşmeler', href: '/sozlesmeler', icon: FileText },
         { title: 'Premium Talepler', href: '/premium-talepler', icon: Crown, badge: pendingPremiumRequests },
+        { title: 'Uzman Analiz', href: '/uzman-analiz', icon: UserCheck, badge: pendingExpertRequests },
       ]
     },
     {

@@ -8,6 +8,7 @@ import * as z from 'zod';
 import { toast } from 'sonner';
 import { Building2, UserPlus, ArrowRight, Loader2, KeyRound } from 'lucide-react';
 import Link from 'next/link';
+import { register as registerUser } from '@/lib/auth';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -38,16 +39,19 @@ export default function RegisterPage() {
   const onSubmit = async (data: RegisterFormValues) => {
     setIsLoading(true);
     
-    // API Call Mock
-    setTimeout(() => {
-      setIsLoading(false);
-      toast.success('Kaydınız alındı.', {
-        description: 'Hesabınız onaylandıktan sonra e-posta ile bilgilendirileceksiniz.',
+    try {
+      await registerUser(data.firmaAdi, data.adSoyad, data.email, data.sifre);
+      toast.success('Kaydınız başarıyla tamamlandı.', {
+        description: 'Lütfen e-posta adresinizle giriş yapın.',
         duration: 5000,
-        className: 'bg-amber-50 border-amber-200 text-amber-800'
+        className: 'bg-emerald-50 border-emerald-200 text-emerald-800'
       });
       router.push('/login');
-    }, 1500);
+    } catch(error: any) {
+      toast.error(error.message || 'Kayıt sırasında bir hata oluştu.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (

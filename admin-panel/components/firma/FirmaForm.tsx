@@ -11,7 +11,7 @@ import { format } from 'date-fns';
 import { tr } from 'date-fns/locale';
 
 import { Firma } from '@/types';
-import { createFirma, updateFirma, runOcrOnFirma } from '@/lib/api';
+import { createFirma, updateFirma, ocrFirma } from '@/lib/api';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -38,7 +38,7 @@ const firmaSchema = z.object({
   adres: z.string().optional(),
   yillik_ciro: z.coerce.number().optional(),
   sozlesme_turu: z.enum(['rapor', 'analiz', 'sistem', 'diger'], {
-    required_error: 'Sözleşme türü seçilmelidir',
+    error: 'Sözleşme türü seçilmelidir',
   }),
   sozlesme_baslangic: z.date().optional(),
   sozlesme_bitis: z.date().optional(),
@@ -67,7 +67,7 @@ export default function FirmaForm({ initialData, firmaId }: FirmaFormProps) {
   const [ocrFilledFields, setOcrFilledFields] = useState<Record<string, boolean>>({});
 
   const form = useForm<FirmaFormValues>({
-    resolver: zodResolver(firmaSchema),
+    resolver: zodResolver(firmaSchema) as never,
     defaultValues: {
       unvan: initialData?.unvan || '',
       vergi_no: initialData?.vergi_no || '',
@@ -114,8 +114,8 @@ export default function FirmaForm({ initialData, firmaId }: FirmaFormProps) {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (!['application/pdf', 'image/jpeg', 'image/png'].includes(file.type)) {
-      toast.error('Lütfen PDF, JPG veya PNG formatında bir dosya seçin.');
+    if (!['application/pdf', 'image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+      toast.error('Lütfen PDF, JPG, PNG veya WEBP formatında bir dosya seçin.');
       return;
     }
 
@@ -124,7 +124,7 @@ export default function FirmaForm({ initialData, firmaId }: FirmaFormProps) {
 
     try {
       const targetId = initialData?.id || firmaId || 'temp_firma_id';
-      const response = await runOcrOnFirma(targetId, file);
+      const response = await ocrFirma(targetId, file);
       const ocrData = response.data;
       
       const newOcrFlags: Record<string, boolean> = { ...ocrFilledFields };
@@ -136,6 +136,7 @@ export default function FirmaForm({ initialData, firmaId }: FirmaFormProps) {
       if (ocrData.yetkili_kisi) { form.setValue('yetkili_kisi', ocrData.yetkili_kisi); newOcrFlags.yetkili_kisi = true; }
       if (ocrData.telefon) { form.setValue('telefon', ocrData.telefon); newOcrFlags.telefon = true; }
       if (ocrData.adres) { form.setValue('adres', ocrData.adres); newOcrFlags.adres = true; }
+      if (ocrData.yillik_ciro) { form.setValue('yillik_ciro', ocrData.yillik_ciro); newOcrFlags.yillik_ciro = true; }
       
       if (ocrData.kurulus_tarihi) { 
         try {
@@ -150,7 +151,8 @@ export default function FirmaForm({ initialData, firmaId }: FirmaFormProps) {
       setOcrFilledFields(newOcrFlags);
       toast.success('Belge başarıyla okundu ve alanlar dolduruldu.', { id: toastId });
     } catch (error) {
-      toast.error('Belge okunamadı, lütfen manuel doldurun.', { id: toastId });
+      const message = error instanceof Error ? error.message : 'Belge okunamadı, lütfen manuel doldurun.';
+      toast.error(message, { id: toastId });
     } finally {
       setIsOcrLoading(false);
       if (e.target) e.target.value = '';
@@ -185,7 +187,7 @@ export default function FirmaForm({ initialData, firmaId }: FirmaFormProps) {
               type="file" 
               id="ocr-upload" 
               className="hidden" 
-              accept=".pdf,image/jpeg,image/png"
+              accept=".pdf,image/jpeg,image/png,image/webp"
               onChange={handleOcrUpload}
               disabled={isOcrLoading}
             />
@@ -267,16 +269,11 @@ export default function FirmaForm({ initialData, firmaId }: FirmaFormProps) {
                     <FormItem className="flex flex-col relative pt-1.5">
                       <FormLabel className="mb-1">Kuruluş Tarihi</FormLabel>
                       <Popover>
-                        <PopoverTrigger asChild>
-                          <FormControl>
-                            <Button
-                              variant={"outline"}
-                              className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}
-                            >
-                              {field.value ? format(field.value, "dd MMMM yyyy", { locale: tr }) : <span>Tarih seçin</span>}
-                            </Button>
-                          </FormControl>
-                        </PopoverTrigger>
+                        <FormControl>
+                          <PopoverTrigger render={<Button variant={"outline"} className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")} />}>
+                            {field.value ? format(field.value, "dd MMMM yyyy", { locale: tr }) : <span>Tarih seçin</span>}
+                          </PopoverTrigger>
+                        </FormControl>
                         <PopoverContent className="w-auto p-0" align="start">
                           <Calendar
                             mode="single"
@@ -420,13 +417,11 @@ export default function FirmaForm({ initialData, firmaId }: FirmaFormProps) {
                   <FormItem className="flex flex-col pt-1.5">
                     <FormLabel className="mb-1">Başlangıç Tarihi</FormLabel>
                     <Popover>
-                      <PopoverTrigger asChild>
-                        <FormControl>
-                          <Button variant={"outline"} className={cn("pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
-                            {field.value ? format(field.value, "dd MMM yyyy", { locale: tr }) : <span>Seçiniz</span>}
-                          </Button>
-                        </FormControl>
-                      </PopoverTrigger>
+                      <FormControl>
+                        <PopoverTrigger render={<Button variant={"outline"} className={cn("pl-3 text-left font-normal", !field.value && "text-muted-foreground")} />}>
+                          {field.value ? format(field.value, "dd MMM yyyy", { locale: tr }) : <span>Seçiniz</span>}
+                        </PopoverTrigger>
+                      </FormControl>
                       <PopoverContent className="w-auto p-0" align="start">
                         <Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus />
                       </PopoverContent>
@@ -443,13 +438,11 @@ export default function FirmaForm({ initialData, firmaId }: FirmaFormProps) {
                   <FormItem className="flex flex-col pt-1.5">
                     <FormLabel className="mb-1">Bitiş Tarihi</FormLabel>
                     <Popover>
-                      <PopoverTrigger asChild>
-                        <FormControl>
-                          <Button variant={"outline"} className={cn("pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
-                            {field.value ? format(field.value, "dd MMM yyyy", { locale: tr }) : <span>Seçiniz</span>}
-                          </Button>
-                        </FormControl>
-                      </PopoverTrigger>
+                      <FormControl>
+                        <PopoverTrigger render={<Button variant={"outline"} className={cn("pl-3 text-left font-normal", !field.value && "text-muted-foreground")} />}>
+                          {field.value ? format(field.value, "dd MMM yyyy", { locale: tr }) : <span>Seçiniz</span>}
+                        </PopoverTrigger>
+                      </FormControl>
                       <PopoverContent className="w-auto p-0" align="start">
                         <Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus />
                       </PopoverContent>

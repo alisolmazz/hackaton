@@ -8,7 +8,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { 
   Brain, UploadCloud, Download, PlusCircle, Edit2, Trash2, 
-  Sparkles, Loader2, Save, CheckCircle2, ChevronLeft, Building2, AlertTriangle, Building, CreditCard
+  Sparkles, Loader2, Save, CheckCircle2, ChevronLeft, Building2, AlertTriangle, Building, CreditCard, FileText
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -67,7 +67,7 @@ export default function FinansalRaporPage() {
   const firma = firmaResponse?.data;
 
   const form = useForm<FinansalFormValues>({
-    resolver: zodResolver(finansalSchema),
+    resolver: zodResolver(finansalSchema) as never,
     defaultValues: {
       donem: '2024-Q1',
       toplam_gelir: 0,
@@ -174,7 +174,7 @@ export default function FinansalRaporPage() {
         <div className="flex items-center gap-3">
           <Select 
             defaultValue={form.getValues('donem')} 
-            onValueChange={(val) => form.setValue('donem', val)}
+            onValueChange={(val) => val && form.setValue('donem', val)}
           >
             <SelectTrigger className="w-[140px] h-10 font-medium">
               <SelectValue placeholder="Dönem Seçin" />

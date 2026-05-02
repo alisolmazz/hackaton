@@ -109,7 +109,7 @@ export default function FinansalDurumPage() {
         </div>
 
         <div className="flex items-center gap-3">
-          <Select value={donem} onValueChange={setDonem}>
+          <Select value={donem} onValueChange={(value) => value && setDonem(value)}>
             <SelectTrigger className="w-[140px] h-10 font-medium">
               <Calendar className="w-4 h-4 mr-2 text-slate-500" />
               <SelectValue />
@@ -196,7 +196,7 @@ export default function FinansalDurumPage() {
             <div className="text-xl font-bold text-red-600">₺{toplamBekleyen.toLocaleString('tr-TR')}</div>
           </CardHeader>
           <CardContent className="pt-4 flex-1">
-            <Accordion type="single" collapsible className="w-full">
+            <Accordion className="w-full">
               {BEKLEYEN_TAHSILATLAR.map((item) => {
                 const diff = differenceInDays(new Date(), new Date(item.vade));
                 const isLate = diff > 0;
@@ -301,7 +301,7 @@ export default function FinansalDurumPage() {
                 <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12 }} tickFormatter={(val) => `₺${val/1000}k`} />
                 <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.3} />
                 <RechartsTooltip 
-                  formatter={(value: number) => `₺${value.toLocaleString('tr-TR')}`}
+                  formatter={(value) => `₺${Number(value).toLocaleString('tr-TR')}`}
                   contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                 />
                 <Legend iconType="circle" />
@@ -360,7 +360,7 @@ export default function FinansalDurumPage() {
                   >
                     {PIE_COLORS.map((color, index) => <Cell key={`cell-${index}`} fill={color} />)}
                   </Pie>
-                  <RechartsTooltip formatter={(val: number) => `₺${val.toLocaleString('tr-TR')}`} />
+                  <RechartsTooltip formatter={(val) => `₺${Number(val).toLocaleString('tr-TR')}`} />
                   <Legend verticalAlign="bottom" iconType="circle" />
                 </PieChart>
               </ResponsiveContainer>
