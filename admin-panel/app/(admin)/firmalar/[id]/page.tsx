@@ -118,10 +118,8 @@ export default function FirmaDetayPage() {
             <Edit2 className="w-4 h-4 mr-2" /> {isEditMode ? 'Düzenlemeyi İptal Et' : 'Düzenle'}
           </Button>
           <AlertDialog>
-            <AlertDialogTrigger>
-              <Button variant="outline" className="border-red-200 hover:bg-red-50 text-red-600 dark:border-red-900/30 dark:text-red-400 dark:hover:bg-red-900/20">
-                <Trash2 className="w-4 h-4" />
-              </Button>
+            <AlertDialogTrigger render={<button type="button" className="inline-flex items-center justify-center rounded-md border border-red-200 hover:bg-red-50 text-red-600 dark:border-red-900/30 dark:text-red-400 dark:hover:bg-red-900/20 h-9 w-9 text-sm font-medium transition-colors" />}>
+              <Trash2 className="w-4 h-4" />
             </AlertDialogTrigger>
             <AlertDialogContent>
               <AlertDialogHeader>

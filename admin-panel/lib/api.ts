@@ -97,6 +97,56 @@ const PREMIUM_ERISIMLER_KEY = 'mock_premium_erisimler';
 const UZMAN_ANALIZ_TALEPLERI_KEY = 'mock_uzman_analiz_talepleri';
 const AI_ANALIZ_KEY = 'mock_ai_finansal_analizler';
 const OCR_FINANSAL_TASLAK_KEY = 'mock_ocr_finansal_taslaklar';
+const MOCK_FIRMALAR_KEY = 'mock_firmalar';
+
+const getLocalFirmalar = (): Firma[] => {
+  const stored = readLocalJson<Firma[] | null>(MOCK_FIRMALAR_KEY, null);
+  if (stored) return stored;
+  writeLocalJson(MOCK_FIRMALAR_KEY, MOCK_FIRMALAR);
+  return MOCK_FIRMALAR;
+};
+
+export const saveLocalFirma = (payload: Partial<Firma>): Firma => {
+  const firmalar = getLocalFirmalar();
+  const email = getLoggedInEmail() || 'anon';
+  const existing = firmalar.find(f => f.user_id === email);
+  const now = new Date().toISOString();
+
+  if (existing) {
+    const updated = { ...existing, ...payload, updated_at: now, onaylandi: true };
+    const next = firmalar.map(f => f.id === existing.id ? updated : f);
+    writeLocalJson(MOCK_FIRMALAR_KEY, next);
+    return updated;
+  }
+
+  const newFirma: Firma = {
+    id: `firma-${Date.now()}`,
+    user_id: email,
+    unvan: payload.unvan || '',
+    vergi_no: payload.vergi_no || '',
+    ticaret_sicil: payload.ticaret_sicil || '',
+    kurulus_tarihi: payload.kurulus_tarihi || '',
+    faaliyet_alani: payload.faaliyet_alani || '',
+    yetkili_kisi: payload.yetkili_kisi || '',
+    telefon: payload.telefon || '',
+    adres: payload.adres || '',
+    yillik_ciro: payload.yillik_ciro || 0,
+    sozlesme_turu: payload.sozlesme_turu || 'rapor',
+    sozlesme_baslangic: payload.sozlesme_baslangic || now.split('T')[0],
+    sozlesme_bitis: payload.sozlesme_bitis || '',
+    sozlesme_bedeli: payload.sozlesme_bedeli || 0,
+    onaylandi: true,
+    created_at: now,
+    updated_at: now,
+  };
+  writeLocalJson(MOCK_FIRMALAR_KEY, [newFirma, ...firmalar]);
+  return newFirma;
+};
+
+export const getLocalFirmam = (): Firma | null => {
+  const email = getLoggedInEmail() || 'anon';
+  return getLocalFirmalar().find(f => f.user_id === email) || null;
+};
 
 export const PREMIUM_PAKET_ADLARI: Record<PremiumPaket, string> = {
   temel_analiz: 'Temel Analiz',
@@ -299,23 +349,26 @@ async function postGeminiFirmaOcr(file: File): Promise<ApiResponse<OcrSonucu>> {
 // FİRMALAR (Admin)
 // ──────────────────────────────────────────────
 export const getFirmalar = async (filters?: FirmaFilters): Promise<PaginatedResponse<Firma>> => {
+  const all = getLocalFirmalar();
   return tryOrMock(
     async () => { const { data } = await apiClient.get<PaginatedResponse<Firma>>('/firma/list', { params: filters }); return data; },
-    { data: MOCK_FIRMALAR, total: MOCK_FIRMALAR.length, page: 1, per_page: 10 }
+    { data: all, total: all.length, page: 1, per_page: 10 }
   );
 };
 
 export const getFirma = async (id: string): Promise<ApiResponse<Firma>> => {
+  const all = getLocalFirmalar();
   return tryOrMock(
     async () => { const { data } = await apiClient.get<ApiResponse<Firma>>(`/firma/${id}`); return data; },
-    { data: MOCK_FIRMALAR.find(f => f.id === id) || MOCK_FIRMALAR[0] }
+    { data: all.find(f => f.id === id) || all[0] }
   );
 };
 
 export const createFirma = async (payload: Partial<Firma>): Promise<ApiResponse<Firma>> => {
+  const created = saveLocalFirma(payload);
   return tryOrMock(
     async () => { const { data } = await apiClient.post<ApiResponse<Firma>>('/firma/create', payload); return data; },
-    { data: { ...MOCK_FIRMALAR[0], ...payload, id: String(Date.now()) } as Firma }
+    { data: created }
   );
 };
 
@@ -327,6 +380,8 @@ export const updateFirma = async (id: string, payload: Partial<Firma>): Promise<
 };
 
 export const deleteFirma = async (id: string): Promise<ApiResponse<void>> => {
+  const all = getLocalFirmalar().filter(f => f.id !== id);
+  writeLocalJson(MOCK_FIRMALAR_KEY, all);
   return tryOrMock(
     async () => { const { data } = await apiClient.delete<ApiResponse<void>>(`/firma/${id}`); return data; },
     { data: undefined as unknown as void }
@@ -341,16 +396,18 @@ export const ocrFirma = async (firmaId: string | undefined, file: File): Promise
 // FİRMAM (User — kendi firması)
 // ──────────────────────────────────────────────
 export const getFirmam = async (): Promise<ApiResponse<Firma>> => {
+  const mine = getLocalFirmam();
   return tryOrMock(
     async () => { const { data } = await apiClient.get<ApiResponse<Firma>>('/firma/me'); return data; },
-    { data: MOCK_FIRMALAR[0] }
+    { data: mine || getLocalFirmalar()[0] }
   );
 };
 
 export const updateFirmam = async (payload: Partial<Firma>): Promise<ApiResponse<Firma>> => {
+  const updated = saveLocalFirma(payload);
   return tryOrMock(
     async () => { const { data } = await apiClient.put<ApiResponse<Firma>>('/firma/me', payload); return data; },
-    { data: { ...MOCK_FIRMALAR[0], ...payload } as Firma }
+    { data: updated }
   );
 };
 

@@ -18,7 +18,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { getCurrentUser } from '@/lib/auth';
-import { ocrFirmam, saveOcrFinansalTaslak } from '@/lib/api';
+import { ocrFirmam, saveOcrFinansalTaslak, saveLocalFirma } from '@/lib/api';
 
 // ZOD SCHEMA
 const firmaSchema = z.object({
@@ -70,8 +70,7 @@ const MOCK_FIRMA = {
 };
 
 export default function FirmaBilgileriPage() {
-  // Mock durum — gerçekte API'den gelecek
-  const [durum] = useState<FirmaDurum>('yok');
+  const [durum, setDurum] = useState<FirmaDurum>('yok');
   const firmaVar = durum !== 'yok';
 
   // OCR State
@@ -163,14 +162,26 @@ export default function FirmaBilgileriPage() {
 
   const onSubmit = (data: FirmaFormValues) => {
     setIsSubmitting(true);
-    setTimeout(() => {
+    try {
+      saveLocalFirma({
+        unvan: data.unvan,
+        vergi_no: data.vergiNo,
+        ticaret_sicil: data.sicilNo || '',
+        kurulus_tarihi: data.kurulusTarihi || '',
+        faaliyet_alani: data.faaliyetAlani || '',
+        yetkili_kisi: data.yetkiliKisi,
+        telefon: data.telefon || '',
+        adres: data.adres || '',
+        yillik_ciro: data.yillikCiro ? Number(data.yillikCiro.replace(/\D/g, '')) : 0,
+        onaylandi: true,
+      });
+      toast.success('Firma kaydı oluşturuldu!', { description: 'Bilgileriniz hem kullanıcı hem admin panelinde görünür.' });
+      setDurum('onaylandi');
+    } catch {
+      toast.error('Kayıt oluşturulurken hata oluştu.');
+    } finally {
       setIsSubmitting(false);
-      if (durum === 'yok') {
-        toast.success('Kaydınız alındı!', { description: 'Firma bilgileriniz admin onayına gönderildi.' });
-      } else {
-        toast.success('Bilgileriniz güncellendi.');
-      }
-    }, 1200);
+    }
   };
 
   return (

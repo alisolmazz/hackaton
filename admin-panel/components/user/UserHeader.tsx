@@ -7,6 +7,7 @@ import { BildirimDropdown } from '@/components/user/BildirimDropdown';
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -70,19 +71,25 @@ export function UserHeader() {
 
         {/* Avatar Dropdown */}
         <DropdownMenu>
-          <DropdownMenuTrigger render={<Button variant="ghost" className="relative h-9 w-9 rounded-full bg-teal-100 dark:bg-teal-900/50 hover:bg-teal-200 dark:hover:bg-teal-800/50 ml-1" />}>
+          <DropdownMenuTrigger
+            render={<button type="button" className="relative h-9 w-9 rounded-full bg-teal-100 dark:bg-teal-900/50 hover:bg-teal-200 dark:hover:bg-teal-800/50 ml-1 inline-flex items-center justify-center" />}
+          >
             <span className="font-bold text-teal-800 dark:text-teal-200 text-sm">AY</span>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56">
-            <DropdownMenuLabel>
-              <div className="flex flex-col space-y-1">
-                <p className="text-sm font-medium leading-none">Ahmet Yılmaz</p>
-                <p className="text-xs leading-none text-muted-foreground">ahmet@technova.com</p>
-              </div>
-            </DropdownMenuLabel>
+            <DropdownMenuGroup>
+              <DropdownMenuLabel>
+                <div className="flex flex-col space-y-1">
+                  <p className="text-sm font-medium leading-none">Ahmet Yılmaz</p>
+                  <p className="text-xs leading-none text-muted-foreground">ahmet@technova.com</p>
+                </div>
+              </DropdownMenuLabel>
+            </DropdownMenuGroup>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => router.push('/user/profil')}>Profil Ayarları</DropdownMenuItem>
-            <DropdownMenuItem onClick={() => router.push('/user/firma-bilgileri')}>Firma Bilgilerim</DropdownMenuItem>
+            <DropdownMenuGroup>
+              <DropdownMenuItem onClick={() => router.push('/user/profil')}>Profil Ayarları</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => router.push('/user/firma-bilgileri')}>Firma Bilgilerim</DropdownMenuItem>
+            </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={handleLogout} className="text-red-600 focus:text-red-600">Çıkış Yap</DropdownMenuItem>
           </DropdownMenuContent>
