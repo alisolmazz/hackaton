@@ -318,7 +318,7 @@ export default function FinansalDurumPage() {
         <CardContent className="pt-6">
           <div className="h-80 w-full mb-8">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={nakitAkisData.length > 0 ? nakitAkisData : [{ ay: 'Veri Yok', giris: 0, cikis: 0, net: 0, kumulatif: 0 }]} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+              <AreaChart data={nakitAkisData.length > 0 ? nakitAkisData : [{ id: '0', firma_id: '0', ay: 'Veri Yok', giris: 0, cikis: 0, net: 0, kumulatif: 0 }]} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
                 <defs>
                   <linearGradient id="colorGiris" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
