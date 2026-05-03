@@ -379,7 +379,7 @@ async function postGeminiFirmaOcr(file: File): Promise<ApiResponse<OcrSonucu>> {
 // FİRMALAR (Admin)
 // ──────────────────────────────────────────────
 export const getFirmalar = async (filters?: FirmaFilters): Promise<PaginatedResponse<Firma>> => {
-  const all = getLocalFirmalar();
+  const all = getLocalFirmalar().filter(f => !f.parent_id);
   return tryOrMock(
     async () => { const { data } = await apiClient.get<PaginatedResponse<Firma>>('/firma/list', { params: filters }); return data; },
     { data: all, total: all.length, page: 1, per_page: 10 }
