@@ -103,6 +103,7 @@ const MOCK_YATIRIMLAR_KEY = 'mock_yatirimlar';
 const MOCK_BANKALAR_KEY = 'mock_bankalar';
 const MOCK_TAHSILATLAR_KEY = 'mock_tahsilatlar';
 const MOCK_PROJELER_KEY = 'mock_projeler';
+const MOCK_NAKIT_AKIS_KEY = 'mock_nakit_akis';
 
 export interface SystemLog {
   id: string;
@@ -147,6 +148,9 @@ export const writeLocalTahsilatlar = (data: Tahsilat[]) => writeLocalJson(MOCK_T
 
 export const getLocalProjeler = (): Proje[] => readLocalJson<Proje[]>(MOCK_PROJELER_KEY, []);
 export const writeLocalProjeler = (data: Proje[]) => writeLocalJson(MOCK_PROJELER_KEY, data);
+
+export const getLocalNakitAkis = (): any[] => readLocalJson<any[]>(MOCK_NAKIT_AKIS_KEY, []);
+export const writeLocalNakitAkis = (data: any[]) => writeLocalJson(MOCK_NAKIT_AKIS_KEY, data);
 
 const getLocalFirmalar = (): Firma[] => {
   const stored = readLocalJson<Firma[] | null>(MOCK_FIRMALAR_KEY, null);
@@ -899,11 +903,28 @@ export const getProjeler = async (firmaId: string): Promise<ApiResponse<Proje[]>
 };
 
 export const createProje = async (firmaId: string, payload: Partial<Proje>): Promise<ApiResponse<Proje>> => {
-  const newProje = { ...payload, id: `proje-${Date.now()}`, firma_id: firmaId, durum: payload.durum || 'devam' } as Proje;
+  const newProje = { ...payload, id: `proje-${Date.now()}`, firmaId: firmaId, durum: payload.durum || 'devam' } as Proje;
   writeLocalProjeler([...getLocalProjeler(), newProje]);
   addSystemLog({ kullanici: getLoggedInEmail() || 'admin', islem_turu: 'create', tablo: 'projeler', kayit_id: newProje.id, eski_deger: null, yeni_deger: newProje as any });
   return tryOrMock(
     async () => { const { data } = await apiClient.post<ApiResponse<Proje>>(`/firma/${firmaId}/projeler`, payload); return data; },
     { data: newProje, message: 'Proje eklendi' }
+  );
+};
+
+export const getNakitAkis = async (firmaId: string): Promise<ApiResponse<any[]>> => {
+  const all = getLocalNakitAkis().filter(n => n.firma_id === firmaId);
+  return tryOrMock(
+    async () => { const { data } = await apiClient.get<ApiResponse<any[]>>(`/firma/${firmaId}/nakit-akis`); return data; },
+    { data: all }
+  );
+};
+
+export const createNakitAkis = async (firmaId: string, payload: any): Promise<ApiResponse<any>> => {
+  const newItem = { ...payload, id: `nakit-${Date.now()}-${Math.random()}`, firma_id: firmaId };
+  writeLocalNakitAkis([...getLocalNakitAkis(), newItem]);
+  return tryOrMock(
+    async () => { const { data } = await apiClient.post<ApiResponse<any>>(`/firma/${firmaId}/nakit-akis`, payload); return data; },
+    { data: newItem, message: 'Nakit akışı eklendi' }
   );
 };

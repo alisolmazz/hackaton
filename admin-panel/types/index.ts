@@ -76,6 +76,16 @@ export interface Tahsilat {
   durum: TahsilatDurum;
 }
 
+export interface NakitAkis {
+  id: string;
+  firma_id: string;
+  ay: string;
+  giris: number;
+  cikis: number;
+  net: number;
+  kumulatif: number;
+}
+
 export interface Proje {
   id: string;
   firma_id: string;

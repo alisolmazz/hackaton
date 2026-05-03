@@ -83,3 +83,28 @@ export const useCreateProje = () => {
     }
   });
 };
+
+export const useNakitAkis = (firmaId: string) => {
+  return useQuery({
+    queryKey: ['nakit_akis', firmaId],
+    queryFn: async () => {
+      const { getNakitAkis } = await import('@/lib/api');
+      const response = await getNakitAkis(firmaId);
+      return response.data;
+    },
+    enabled: !!firmaId,
+  });
+};
+
+export const useCreateNakitAkis = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ firmaId, payload }: { firmaId: string; payload: any }) => {
+      const { createNakitAkis } = await import('@/lib/api');
+      return await createNakitAkis(firmaId, payload);
+    },
+    onSuccess: (response, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['nakit_akis', variables.firmaId] });
+    }
+  });
+};
