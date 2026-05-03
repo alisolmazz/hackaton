@@ -386,6 +386,14 @@ export const getFirmalar = async (filters?: FirmaFilters): Promise<PaginatedResp
   );
 };
 
+export const getAltFirmalar = async (parentId: string): Promise<PaginatedResponse<Firma>> => {
+  const all = getLocalFirmalar().filter(f => f.parent_id === parentId);
+  return tryOrMock(
+    async () => { const { data } = await apiClient.get<PaginatedResponse<Firma>>(`/firma/${parentId}/alt-firmalar`); return data; },
+    { data: all, total: all.length, page: 1, per_page: 10 }
+  );
+};
+
 export const getFirma = async (id: string): Promise<ApiResponse<Firma>> => {
   const all = getLocalFirmalar();
   return tryOrMock(

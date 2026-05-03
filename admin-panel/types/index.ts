@@ -19,6 +19,7 @@ export interface User {
 
 export interface Firma {
   id: string;
+  parent_id?: string;
   user_id: string;
   unvan: string;
   vergi_no: string;

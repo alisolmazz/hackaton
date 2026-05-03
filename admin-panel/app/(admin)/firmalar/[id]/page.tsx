@@ -15,6 +15,10 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { useAltFirmalar, useCreateFirma, useDeleteFirma } from '@/hooks/useFirmalar';
 import FirmaForm from '@/components/firma/FirmaForm';
 
 export default function FirmaDetayPage() {
@@ -23,6 +27,31 @@ export default function FirmaDetayPage() {
   const queryClient = useQueryClient();
   const id = params.id as string;
   const [isEditMode, setIsEditMode] = useState(false);
+  const [isAltFirmaModalOpen, setIsAltFirmaModalOpen] = useState(false);
+  const [altFirmaForm, setAltFirmaForm] = useState({ unvan: '', vergi_no: '', telefon: '', yetkili_kisi: '', adres: '' });
+
+  const { data: altFirmalarResponse } = useAltFirmalar(id);
+  const altFirmalar = altFirmalarResponse?.data || [];
+  const createAltFirmaMutation = useCreateFirma();
+  const deleteAltFirmaMutation = useDeleteFirma();
+
+  const handleAddAltFirma = () => {
+    if (!altFirmaForm.unvan) {
+      toast.error('Ünvan zorunludur.');
+      return;
+    }
+    createAltFirmaMutation.mutate({
+      ...altFirmaForm,
+      parent_id: id,
+      sozlesme_turu: firma?.sozlesme_turu || 'diger',
+    }, {
+      onSuccess: () => {
+        setIsAltFirmaModalOpen(false);
+        setAltFirmaForm({ unvan: '', vergi_no: '', telefon: '', yetkili_kisi: '', adres: '' });
+        queryClient.invalidateQueries({ queryKey: ['alt_firmalar', id] });
+      }
+    });
+  };
 
   const { data: firmaResponse, isLoading } = useQuery({
     queryKey: ['firma', id],
@@ -84,8 +113,13 @@ export default function FirmaDetayPage() {
             <div className="flex items-center gap-3 mb-2 flex-wrap">
               <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">{firma.unvan}</h1>
               <Badge variant="outline" className={`uppercase tracking-wider font-bold ${getSozlesmeBadgeColor(firma.sozlesme_turu)}`}>
-                {firma.sozlesme_turu}
+                {firma.sozlesme_turu} Sözleşmesi
               </Badge>
+              {firma.parent_id && (
+                <Badge variant="secondary" className="cursor-pointer border-blue-200 text-blue-700 bg-blue-50 hover:bg-blue-100 transition-colors shadow-none" onClick={() => router.push(`/firmalar/${firma.parent_id}`)}>
+                  ↑ Ana Firmaya Dön
+                </Badge>
+              )}
               {firma.onaylandi ? (
                 <Badge className="bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800">Onaylı</Badge>
               ) : (
@@ -287,15 +321,101 @@ export default function FirmaDetayPage() {
               </div>
 
               {/* Alt Firmalar (Opsiyonel) */}
-              <div className="mt-8 pt-8 border-t border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div>
-                  <h4 className="text-lg font-bold text-slate-800 dark:text-white mb-1">Alt Firmalar & Şubeler</h4>
-                  <p className="text-sm text-slate-500">Bu firmaya bağlı olan bağımsız iştirakler ve şubeler.</p>
+              {!firma.parent_id && (
+                <div className="mt-8 pt-8 border-t border-slate-200 dark:border-slate-800">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                    <div>
+                      <h4 className="text-lg font-bold text-slate-800 dark:text-white mb-1">Alt Firmalar & Şubeler</h4>
+                      <p className="text-sm text-slate-500">Bu firmaya bağlı olan bağımsız iştirakler ve şubeler.</p>
+                    </div>
+                    <Dialog open={isAltFirmaModalOpen} onOpenChange={setIsAltFirmaModalOpen}>
+                      <DialogTrigger>
+                        <Button variant="outline" className="shadow-sm">
+                          <PlusCircle className="w-4 h-4 mr-2" /> Alt Firma Ekle
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>Yeni Alt Firma/Şube Ekle</DialogTitle>
+                        </DialogHeader>
+                        <div className="grid gap-4 py-4">
+                          <div className="grid gap-2">
+                            <Label htmlFor="unvan">Ünvan</Label>
+                            <Input id="unvan" value={altFirmaForm.unvan} onChange={(e) => setAltFirmaForm({ ...altFirmaForm, unvan: e.target.value })} placeholder="Firma Ünvanı" />
+                          </div>
+                          <div className="grid gap-2">
+                            <Label htmlFor="vergi_no">Vergi No</Label>
+                            <Input id="vergi_no" value={altFirmaForm.vergi_no} onChange={(e) => setAltFirmaForm({ ...altFirmaForm, vergi_no: e.target.value })} placeholder="Vergi Numarası" />
+                          </div>
+                          <div className="grid gap-2">
+                            <Label htmlFor="yetkili">Yetkili Kişi</Label>
+                            <Input id="yetkili" value={altFirmaForm.yetkili_kisi} onChange={(e) => setAltFirmaForm({ ...altFirmaForm, yetkili_kisi: e.target.value })} placeholder="Yetkili Ad Soyad" />
+                          </div>
+                          <div className="grid gap-2">
+                            <Label htmlFor="tel">Telefon</Label>
+                            <Input id="tel" value={altFirmaForm.telefon} onChange={(e) => setAltFirmaForm({ ...altFirmaForm, telefon: e.target.value })} placeholder="Telefon Numarası" />
+                          </div>
+                          <div className="grid gap-2">
+                            <Label htmlFor="adres">Adres</Label>
+                            <Input id="adres" value={altFirmaForm.adres} onChange={(e) => setAltFirmaForm({ ...altFirmaForm, adres: e.target.value })} placeholder="Adres" />
+                          </div>
+                        </div>
+                        <DialogFooter>
+                          <Button variant="outline" onClick={() => setIsAltFirmaModalOpen(false)}>İptal</Button>
+                          <Button onClick={handleAddAltFirma} disabled={createAltFirmaMutation.isPending}>
+                            {createAltFirmaMutation.isPending ? 'Ekleniyor...' : 'Ekle'}
+                          </Button>
+                        </DialogFooter>
+                      </DialogContent>
+                    </Dialog>
+                  </div>
+
+                  {altFirmalar.length > 0 ? (
+                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                      {altFirmalar.map((alt) => (
+                        <Card key={alt.id} className="group hover:shadow-md transition-all border-l-4 border-l-blue-500 relative cursor-pointer" onClick={(e) => {
+                          if ((e.target as HTMLElement).closest('.delete-btn')) return;
+                          router.push(`/firmalar/${alt.id}`);
+                        }}>
+                          <CardHeader className="pb-2">
+                            <CardTitle className="text-base truncate pr-8" title={alt.unvan}>{alt.unvan}</CardTitle>
+                          </CardHeader>
+                          <CardContent className="space-y-1 pb-4">
+                            <p className="text-sm text-slate-500">Vergi No: {alt.vergi_no || '-'}</p>
+                            <p className="text-sm text-slate-500 truncate">Yetkili: {alt.yetkili_kisi || '-'}</p>
+                          </CardContent>
+                          
+                          <AlertDialog>
+                            <AlertDialogTrigger>
+                              <Button variant="ghost" size="icon" className="absolute top-2 right-2 text-slate-400 opacity-0 group-hover:opacity-100 hover:text-red-500 hover:bg-red-50 delete-btn transition-opacity">
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Emin misiniz?</AlertDialogTitle>
+                                <AlertDialogDescription>Bu alt firmayı silmek istediğinize emin misiniz? Bu işlem geri alınamaz.</AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel className="delete-btn">İptal</AlertDialogCancel>
+                                <AlertDialogAction className="bg-red-600 hover:bg-red-700 delete-btn" onClick={() => {
+                                  deleteAltFirmaMutation.mutate(alt.id, {
+                                    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['alt_firmalar', id] })
+                                  });
+                                }}>Sil</AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </Card>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center p-8 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-dashed border-slate-200 dark:border-slate-800 text-slate-500 text-sm">
+                      Bu firmaya ait henüz bir alt firma / şube eklenmemiş.
+                    </div>
+                  )}
                 </div>
-                <Button variant="outline" className="shadow-sm">
-                  <PlusCircle className="w-4 h-4 mr-2" /> Alt Firma Ekle
-                </Button>
-              </div>
+              )}
             </TabsContent>
 
             <TabsContent value="finansal_rapor" className="outline-none">

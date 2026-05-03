@@ -13,6 +13,15 @@ export function useFirmalar(filters?: FirmaFilters) {
   });
 }
 
+/** Admin: Alt firma listesi */
+export function useAltFirmalar(parentId: string) {
+  return useQuery({
+    queryKey: ['alt_firmalar', parentId],
+    queryFn: () => api.getAltFirmalar(parentId),
+    enabled: !!parentId,
+  });
+}
+
 /** Admin: Tekil firma detayı */
 export function useFirma(id: string) {
   return useQuery({
