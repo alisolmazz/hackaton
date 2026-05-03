@@ -595,38 +595,7 @@ export const saveFinansalRapor = async (firmaId: string, payload: Partial<Finans
   );
 };
 
-export const getBankalar = async (firmaId: string): Promise<ApiResponse<Banka[]>> => {
-  return tryOrMock(
-    async () => { const { data } = await apiClient.get<ApiResponse<Banka[]>>(`/finansal/${firmaId}/bankalar`); return data; },
-    { data: [
-      { id: 'b1', firma_id: firmaId, banka_adi: 'Garanti BBVA', hesap_no: 'TR12 0006 2000 ****4521', bakiye: 1250000, kredi_limiti: 2000000, kredi_kullanim: 750000 },
-      { id: 'b2', firma_id: firmaId, banka_adi: 'İş Bankası', hesap_no: 'TR34 0006 4000 ****7890', bakiye: 870000, kredi_limiti: 1500000, kredi_kullanim: 1100000 },
-      { id: 'b3', firma_id: firmaId, banka_adi: 'Yapı Kredi', hesap_no: 'TR56 0006 7000 ****3456', bakiye: 340000, kredi_limiti: 800000, kredi_kullanim: 680000 },
-    ]}
-  );
-};
 
-export const getTahsilatlar = async (firmaId: string): Promise<ApiResponse<Tahsilat[]>> => {
-  return tryOrMock(
-    async () => { const { data } = await apiClient.get<ApiResponse<Tahsilat[]>>(`/finansal/${firmaId}/tahsilatlar`); return data; },
-    { data: [
-      { id: 't1', firma_id: firmaId, tutar: 45000, aciklama: 'Fatura #2024-045', vade_tarihi: '2024-04-15', odeme_tarihi: null, durum: 'gecikti' as const },
-      { id: 't2', firma_id: firmaId, tutar: 65000, aciklama: 'Proje Alpha 3.taksit', vade_tarihi: '2024-05-10', odeme_tarihi: null, durum: 'bekliyor' as const },
-      { id: 't3', firma_id: firmaId, tutar: 35000, aciklama: 'Fatura #2024-040', vade_tarihi: '2024-04-01', odeme_tarihi: '2024-04-28', durum: 'odendi' as const },
-    ]}
-  );
-};
-
-export const getProjeler = async (firmaId: string): Promise<ApiResponse<Proje[]>> => {
-  return tryOrMock(
-    async () => { const { data } = await apiClient.get<ApiResponse<Proje[]>>(`/finansal/${firmaId}/projeler`); return data; },
-    { data: [
-      { id: 'p1', firma_id: firmaId, proje_adi: 'ERP Modül Geliştirme', durum: 'devam' as const, baslangic: '2024-01-15', bitis: null, tutar: 180000 },
-      { id: 'p2', firma_id: firmaId, proje_adi: 'Mobil Uygulama v2', durum: 'devam' as const, baslangic: '2024-03-01', bitis: null, tutar: 95000 },
-      { id: 'p3', firma_id: firmaId, proje_adi: 'Web Sitesi Yenileme', durum: 'bitti' as const, baslangic: '2023-10-01', bitis: '2024-02-15', tutar: 60000 },
-    ]}
-  );
-};
 
 export const getFinansalDurum = async (firmaId: string): Promise<ApiResponse<FinansalRapor>> => {
   return tryOrMock(

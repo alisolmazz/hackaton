@@ -85,8 +85,8 @@ export default function FinansalDurumPage() {
         payload: {
           aciklama: 'Yapay Zeka OCR - Danışmanlık Tahsilatı',
           tutar: Math.floor(Math.random() * 200000) + 50000,
-          durum: 'odendi',
-          tarih: new Date().toISOString()
+          durum: 'odendi' as any, // enum hatasi vermesin
+          odeme_tarihi: new Date().toISOString()
         }
       });
       toast.success('Finansal durum belgeden güncellendi!', { id });
