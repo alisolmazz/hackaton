@@ -36,6 +36,21 @@ import { getFirma } from '@/lib/api';
 const AYLAR = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
 const PIE_COLORS = ['#ef4444', '#10b981']; // Red (Borç), Green (Özkaynak)
 
+const DEMO_NAKIT_AKIS = [
+  { ay: AYLAR[0], giris: 920000, cikis: 710000 },
+  { ay: AYLAR[1], giris: 1040000, cikis: 795000 },
+  { ay: AYLAR[2], giris: 1185000, cikis: 865000 },
+  { ay: AYLAR[3], giris: 1340000, cikis: 910000 },
+  { ay: AYLAR[4], giris: 1260000, cikis: 980000 },
+  { ay: AYLAR[5], giris: 1510000, cikis: 1095000 },
+  { ay: AYLAR[6], giris: 1420000, cikis: 1015000 },
+  { ay: AYLAR[7], giris: 1665000, cikis: 1170000 },
+  { ay: AYLAR[8], giris: 1730000, cikis: 1240000 },
+  { ay: AYLAR[9], giris: 1850000, cikis: 1325000 },
+  { ay: AYLAR[10], giris: 1920000, cikis: 1390000 },
+  { ay: AYLAR[11], giris: 2140000, cikis: 1515000 },
+];
+
 const finansalSchema = z.object({
   donem: z.string().min(1, 'Dönem seçilmelidir'),
   toplam_gelir: z.coerce.number().min(0, 'Geçerli bir değer girin'),
@@ -80,7 +95,7 @@ export default function FinansalRaporPage() {
     }
   });
 
-  const { fields } = useFieldArray({
+  const { fields, replace } = useFieldArray({
     control: form.control,
     name: "nakit_akis",
   });
@@ -119,6 +134,7 @@ export default function FinansalRaporPage() {
       form.setValue('toplam_varlik', 25000000);
       form.setValue('toplam_borc', 9500000);
       form.setValue('nakit_ve_benzerleri', 3200000);
+      replace(DEMO_NAKIT_AKIS);
       toast.success('Değerler otomatik dolduruldu!', { id });
       setIsOcrLoading(false);
       setHasUnsavedChanges(true);

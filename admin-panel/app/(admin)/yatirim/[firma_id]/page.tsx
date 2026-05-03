@@ -67,6 +67,69 @@ const PLANLANAN_YATIRIMLAR = [
   { id: 3, ad: 'Güneş Enerjisi GES', tahmini: 1200000, beklenen_getiri: 45, tarih: '2024-11-30', durum: 'Planlıyor' },
 ];
 
+const DEMO_AKTIF_YATIRIMLAR = (firmaId: string): Yatirim[] => [
+  {
+    id: `${firmaId}-demo-yatirim-1`,
+    firma_id: firmaId,
+    ad: 'BIST 30 Hisse Sepeti',
+    tur: 'hisse',
+    alis: 1200000,
+    guncel: 1515000,
+    risk: 'orta',
+    tarih: '2025-10-12',
+    notlar: 'Temettu agirlikli buyume portfoyu',
+    created_at: '2025-10-12T09:00:00Z',
+  },
+  {
+    id: `${firmaId}-demo-yatirim-2`,
+    firma_id: firmaId,
+    ad: 'Kisa Vadeli Ozel Sektor Tahvili',
+    tur: 'tahvil',
+    alis: 850000,
+    guncel: 912000,
+    risk: 'dusuk',
+    tarih: '2025-11-03',
+    notlar: 'Likidite park alani',
+    created_at: '2025-11-03T09:00:00Z',
+  },
+  {
+    id: `${firmaId}-demo-yatirim-3`,
+    firma_id: firmaId,
+    ad: 'Lojistik Depo Ortakligi',
+    tur: 'gayrimenkul',
+    alis: 2100000,
+    guncel: 2680000,
+    risk: 'orta',
+    tarih: '2025-07-18',
+    notlar: 'Kira getirisi ve deger artisi hedefli',
+    created_at: '2025-07-18T09:00:00Z',
+  },
+  {
+    id: `${firmaId}-demo-yatirim-4`,
+    firma_id: firmaId,
+    ad: 'Fintech Girisim Sermayesi',
+    tur: 'girisim',
+    alis: 650000,
+    guncel: 585000,
+    risk: 'yuksek',
+    tarih: '2026-01-22',
+    notlar: 'Erken asama stratejik yatirim',
+    created_at: '2026-01-22T09:00:00Z',
+  },
+  {
+    id: `${firmaId}-demo-yatirim-5`,
+    firma_id: firmaId,
+    ad: 'Eurobond Sepeti',
+    tur: 'tahvil',
+    alis: 980000,
+    guncel: 1088000,
+    risk: 'dusuk',
+    tarih: '2025-09-05',
+    notlar: 'Doviz bazli koruma amacli',
+    created_at: '2025-09-05T09:00:00Z',
+  },
+];
+
 // MODAL FORM SCHEMA
 const yatirimSchema = z.object({
   ad: z.string().min(2, 'Yatırım adı girilmelidir'),
@@ -94,7 +157,7 @@ export default function YatirimPortfoyuPage() {
   const firma = firmaResponse?.data;
 
   const { data: yatirimlarResponse, isLoading: isYatirimlarLoading } = useYatirimlar(firmaId);
-  const aktifYatirimlar: Yatirim[] = yatirimlarResponse || [];
+  const aktifYatirimlar: Yatirim[] = yatirimlarResponse?.length ? yatirimlarResponse : DEMO_AKTIF_YATIRIMLAR(firmaId);
   
   const createYatirimMutation = useCreateYatirim();
   const deleteYatirimMutation = useDeleteYatirim();

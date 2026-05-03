@@ -91,6 +91,32 @@ admin-panel/
 
 ---
 
+## 🧠 AI Prompt Stratejisi
+
+Projemizde yapay zeka entegrasyonu için kullanılan temel prompt stratejileri aşağıda detaylandırılmıştır:
+
+### 1. OCR ve Belge Analizi (Parsing)
+*   **Strateji:** Role-play ve Structured Output.
+*   **Prompt:** *"Sen profesyonel bir mali müşavir ve veri analistisin. Sana gönderilen bu bilanço görselinden vergi numarası, yıllık ciro, özkaynaklar ve borç oranlarını JSON formatında çıkar. Eğer veri net değilse 'null' döndür."*
+
+### 2. Finansal Durum Yorumlama
+*   **Strateji:** Chain-of-Thought (Düşünce Zinciri).
+*   **Prompt:** *"Verilen gelir/gider tablosuna göre şirketin nakit akışını analiz et. Önce kısa vadeli borç ödeme kapasitesine bak, ardından karlılık trendini incele ve en sonunda yönetici özeti şeklinde 3 maddelik bir tavsiye raporu oluştur."*
+
+### 3. Otomatik Sunum (PPTX) Üretimi
+*   **Strateji:** Template-based Generation.
+*   **Prompt:** *"Ekteki finansal verileri kullanarak bir yatırımcı sunumu taslağı hazırla. Slayt 1: Şirket Özeti, Slayt 2: Gelir Trendi, Slayt 3: Riskler ve Fırsatlar. Her slayt için başlık ve en fazla 4 maddelik açıklama metni üret."*
+
+---
+
+## 🔒 Güvenlik ve Optimizasyon
+
+*   **At-Rest Encryption (AES-256):** Kullanıcıların hassas finansal verileri (ciro, vergi no vb.) veritabanına veya yerel depolamaya (Local Storage) yazılmadan önce `crypto-js` kullanılarak AES algoritmasıyla şifrelenmektedir.
+*   **Sistem Loglama:** Tüm CRUD işlemleri, AI çağrıları (istek/yanıt süresi) ve yetkilendirme hareketleri `SystemLog` yapısı ile takip edilmektedir.
+*   **Performans:** N+1 sorgu problemlerini önlemek için React Query ile veri önbellekleme ve listeleme sayfalarında istemci tarafında optimize edilmiş pagination (sayfalama) uygulanmıştır.
+
+---
+
 ## 🎨 Tema ve Tasarım Yaklaşımı
 Projede standart Tailwind temalarından uzaklaşılarak, renk geçişlerinin (gradient), bulanıklaştırmaların (blur/backdrop-filter) ve yarı saydam katmanların ağırlıkta olduğu özel bir tasarım sistemi kurulmuştur. Sistem hem **Aydınlık (Light)** hem de **Karanlık (Dark)** modlara tam uyumlu (Bimodal) tepki vermektedir. CSS animasyonları, mikroskobik sayfa geçişleri ve pürüzsüz "hover" detaylarına büyük önem verilmiştir.
 

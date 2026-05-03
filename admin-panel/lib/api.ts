@@ -1,5 +1,6 @@
 import axios, { AxiosInstance, InternalAxiosRequestConfig, AxiosResponse, AxiosError } from 'axios';
 import { toast } from 'sonner';
+import CryptoJS from 'crypto-js';
 import { getCurrentUser, getToken, logout } from './auth';
 import type {
   ApiResponse, PaginatedResponse,
@@ -216,19 +217,43 @@ type PremiumHesapDurumu = {
   paket: PremiumPaket | null;
 };
 
+// Güvenlik: Hassas finansal verilerin istemci tarafında "At-Rest" şifrelenmesi
+const ENCRYPTION_SECRET = process.env.NEXT_PUBLIC_ENCRYPTION_KEY || 'prosicht-hackathon-secure-key-2024';
+
 const readLocalJson = <T,>(key: string, fallback: T): T => {
   if (typeof window === 'undefined') return fallback;
   try {
     const raw = localStorage.getItem(key);
-    return raw ? JSON.parse(raw) as T : fallback;
+    if (!raw) return fallback;
+    
+    // Şifreyi çöz (Decrypt)
+    const bytes = CryptoJS.AES.decrypt(raw, ENCRYPTION_SECRET);
+    const decryptedData = bytes.toString(CryptoJS.enc.Utf8);
+    
+    // Eğer şifre çözülemezse (veya eski şifresiz veriyse), düz parse etmeyi dene
+    if (!decryptedData) {
+      return JSON.parse(raw) as T;
+    }
+    
+    return JSON.parse(decryptedData) as T;
   } catch {
-    return fallback;
+    // Fallback if data is completely corrupted or format changes
+    try {
+      const raw = localStorage.getItem(key);
+      return raw ? JSON.parse(raw) as T : fallback;
+    } catch {
+      return fallback;
+    }
   }
 };
 
 const writeLocalJson = (key: string, value: unknown) => {
   if (typeof window === 'undefined') return;
-  localStorage.setItem(key, JSON.stringify(value));
+  // Veriyi şifrele (At-Rest Encryption)
+  const jsonString = JSON.stringify(value);
+  const encryptedData = CryptoJS.AES.encrypt(jsonString, ENCRYPTION_SECRET).toString();
+  
+  localStorage.setItem(key, encryptedData);
   window.dispatchEvent(new Event('premium-data-changed'));
 };
 

@@ -30,6 +30,137 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 
 const PIE_COLORS = ['#ef4444', '#10b981'];
 
+const DEMO_BANKALAR = (firmaId: string): Banka[] => [
+  {
+    id: `${firmaId}-demo-banka-1`,
+    firma_id: firmaId,
+    banka_adi: 'Garanti BBVA',
+    hesap_no: 'TR12 0006 2000 **** 4821',
+    bakiye: 1840000,
+    kredi_limiti: 3000000,
+    kredi_kullanim: 1125000,
+  },
+  {
+    id: `${firmaId}-demo-banka-2`,
+    firma_id: firmaId,
+    banka_adi: 'Akbank',
+    hesap_no: 'TR45 0004 6000 **** 9074',
+    bakiye: 965000,
+    kredi_limiti: 1750000,
+    kredi_kullanim: 640000,
+  },
+  {
+    id: `${firmaId}-demo-banka-3`,
+    firma_id: firmaId,
+    banka_adi: 'Yapi Kredi',
+    hesap_no: 'TR88 0006 7000 **** 2159',
+    bakiye: 1285000,
+    kredi_limiti: 2200000,
+    kredi_kullanim: 890000,
+  },
+];
+
+const DEMO_TAHSILATLAR = (firmaId: string): Tahsilat[] => [
+  {
+    id: `${firmaId}-demo-tahsilat-1`,
+    firma_id: firmaId,
+    aciklama: 'Kurumsal danismanlik faturasi',
+    tutar: 420000,
+    vade_tarihi: '2026-04-22',
+    odeme_tarihi: null,
+    durum: 'bekliyor',
+  },
+  {
+    id: `${firmaId}-demo-tahsilat-2`,
+    firma_id: firmaId,
+    aciklama: 'Bakim ve destek hizmeti',
+    tutar: 275000,
+    vade_tarihi: '2026-05-14',
+    odeme_tarihi: null,
+    durum: 'bekliyor',
+  },
+  {
+    id: `${firmaId}-demo-tahsilat-3`,
+    firma_id: firmaId,
+    aciklama: 'Mart donemi proje teslimati',
+    tutar: 690000,
+    vade_tarihi: '2026-03-29',
+    odeme_tarihi: '2026-04-02',
+    durum: 'odendi',
+  },
+  {
+    id: `${firmaId}-demo-tahsilat-4`,
+    firma_id: firmaId,
+    aciklama: 'Nisan aylik abonelik geliri',
+    tutar: 510000,
+    vade_tarihi: '2026-04-30',
+    odeme_tarihi: '2026-05-01',
+    durum: 'odendi',
+  },
+];
+
+const DEMO_PROJELER = (firmaId: string): Proje[] => [
+  {
+    id: `${firmaId}-demo-proje-1`,
+    firma_id: firmaId,
+    proje_adi: 'ERP modernizasyonu',
+    durum: 'devam',
+    baslangic: '2026-01-15',
+    bitis: '2026-08-30',
+    tutar: 2400000,
+  },
+  {
+    id: `${firmaId}-demo-proje-2`,
+    firma_id: firmaId,
+    proje_adi: 'Sube nakit akisi optimizasyonu',
+    durum: 'devam',
+    baslangic: '2026-03-01',
+    bitis: null,
+    tutar: 1180000,
+  },
+  {
+    id: `${firmaId}-demo-proje-3`,
+    firma_id: firmaId,
+    proje_adi: '2025 kapanis raporlama paketi',
+    durum: 'bitti',
+    baslangic: '2025-10-10',
+    bitis: '2026-01-20',
+    tutar: 820000,
+  },
+];
+
+const DEMO_NAKIT_AKIS = (firmaId: string): NakitAkis[] => {
+  const rows = [
+    ['Oca', 920000, 710000],
+    ['Sub', 1040000, 795000],
+    ['Mar', 1185000, 865000],
+    ['Nis', 1340000, 910000],
+    ['May', 1260000, 980000],
+    ['Haz', 1510000, 1095000],
+    ['Tem', 1420000, 1015000],
+    ['Agu', 1665000, 1170000],
+    ['Eyl', 1730000, 1240000],
+    ['Eki', 1850000, 1325000],
+    ['Kas', 1920000, 1390000],
+    ['Ara', 2140000, 1515000],
+  ] as const;
+
+  let kumulatif = 0;
+  return rows.map(([ay, giris, cikis], index) => {
+    const net = giris - cikis;
+    kumulatif += net;
+    return {
+      id: `${firmaId}-demo-nakit-${index + 1}`,
+      firma_id: firmaId,
+      ay,
+      giris,
+      cikis,
+      net,
+      kumulatif,
+    };
+  });
+};
+
 export default function FinansalDurumPage() {
   const params = useParams();
   const router = useRouter();
@@ -52,10 +183,10 @@ export default function FinansalDurumPage() {
   const createBankaMutation = useCreateBanka();
   const createProjeMutation = useCreateProje();
 
-  const bankalar: Banka[] = bankalarResp || [];
-  const tahsilatlar: Tahsilat[] = tahsilatlarResp || [];
-  const projeler: Proje[] = projelerResp || [];
-  const nakitAkisData: NakitAkis[] = nakitAkisResp || [];
+  const bankalar: Banka[] = bankalarResp?.length ? bankalarResp : DEMO_BANKALAR(firmaId);
+  const tahsilatlar: Tahsilat[] = tahsilatlarResp?.length ? tahsilatlarResp : DEMO_TAHSILATLAR(firmaId);
+  const projeler: Proje[] = projelerResp?.length ? projelerResp : DEMO_PROJELER(firmaId);
+  const nakitAkisData: NakitAkis[] = nakitAkisResp?.length ? nakitAkisResp : DEMO_NAKIT_AKIS(firmaId);
 
   const bekleyenTahsilatlar = tahsilatlar.filter(t => t.durum === 'bekliyor');
   const yapilanTahsilatlar = tahsilatlar.filter(t => t.durum === 'odendi');
@@ -87,7 +218,7 @@ export default function FinansalDurumPage() {
       await createProjeMutation.mutateAsync({ firmaId, payload: { proje_adi: 'OCR Analiz Projesi', durum: 'devam' as any, baslangic: new Date().toISOString(), bitis: null, tutar: 300000 } });
       
       // Nakit Akis (Eger tablo boşsa aylık fake data girelim)
-      if (nakitAkisData.length === 0) {
+      if (!nakitAkisResp?.length) {
         const AYLAR = ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara'];
         let kum = 0;
         for (let i=0; i<12; i++) {

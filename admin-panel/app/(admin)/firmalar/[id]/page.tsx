@@ -3,13 +3,14 @@
 import React, { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Building2, Edit2, Trash2, CheckCircle2, ChevronLeft, Calendar as CalendarIcon, Phone, MapPin, Briefcase, FileText, PlusCircle, UploadCloud, Sparkles, Loader2, Navigation } from 'lucide-react';
+import { Building2, Edit2, Trash2, CheckCircle2, ChevronLeft, Calendar as CalendarIcon, Phone, MapPin, Briefcase, FileText, PlusCircle, UploadCloud, Sparkles, Loader2, Navigation, FileSpreadsheet } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { format } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import { toast } from 'sonner';
+import * as XLSX from 'xlsx';
 
-import { getFirma, updateFirma, deleteFirma, ocrFirma } from '@/lib/api';
+import { getFirma, updateFirma, deleteFirma, ocrFirma, getFinansalRapor, getBankalar, getTahsilatlar, getProjeler, getNakitAkis, getYatirimlar } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -140,6 +141,159 @@ export default function FirmaDetayPage() {
       case 'analiz': return 'bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300 border-purple-200 dark:border-purple-800';
       case 'sistem': return 'bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-300 border-orange-200 dark:border-orange-800';
       default: return 'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-300 border-slate-200 dark:border-slate-700';
+    }
+  };
+
+  const addSheet = (wb: XLSX.WorkBook, sheetName: string, rows: unknown[][], widths: number[]) => {
+    const ws = XLSX.utils.aoa_to_sheet(rows.length ? rows : [['Kayıt bulunamadı']]);
+    ws['!cols'] = widths.map((wch) => ({ wch }));
+    XLSX.utils.book_append_sheet(wb, ws, sheetName);
+  };
+
+  const formatCurrency = (value?: number | null) => typeof value === 'number' ? value : '';
+  const formatDate = (value?: string | null) => value ? format(new Date(value), 'dd.MM.yyyy', { locale: tr }) : '';
+
+  const handleExportExcel = async () => {
+    const toastId = toast.loading('Excel dosyası hazırlanıyor...');
+
+    try {
+      const [
+        finansalRaporResponse,
+        bankalarResponse,
+        tahsilatlarResponse,
+        projelerResponse,
+        nakitAkisResponse,
+        yatirimlarResponse,
+      ] = await Promise.all([
+        getFinansalRapor(id, '2024-Yıllık'),
+        getBankalar(id),
+        getTahsilatlar(id),
+        getProjeler(id),
+        getNakitAkis(id),
+        getYatirimlar(id),
+      ]);
+
+      const wb = XLSX.utils.book_new();
+      wb.Props = {
+        Title: `${firma.unvan} Firma Veri Raporu`,
+        Subject: 'Pro Sicht firma veri aktarımı',
+        Author: 'Pro Sicht',
+        CreatedDate: new Date(),
+      };
+
+      addSheet(wb, 'Firma Ozeti', [
+        ['Pro Sicht Firma Veri Raporu'],
+        ['Oluşturma Tarihi', format(new Date(), 'dd.MM.yyyy HH:mm', { locale: tr })],
+        [],
+        ['Alan', 'Değer'],
+        ['Firma Ünvanı', firma.unvan],
+        ['Vergi Numarası', firma.vergi_no],
+        ['Ticaret Sicil No', firma.ticaret_sicil || '-'],
+        ['Kuruluş Tarihi', formatDate(firma.kurulus_tarihi)],
+        ['Faaliyet Alanı', firma.faaliyet_alani || '-'],
+        ['Yetkili Kişi', firma.yetkili_kisi || '-'],
+        ['Telefon', firma.telefon || '-'],
+        ['Adres', firma.adres || '-'],
+        ['Yıllık Ciro', formatCurrency(firma.yillik_ciro)],
+        ['Onay Durumu', firma.onaylandi ? 'Onaylı' : 'Onay Bekliyor'],
+        ['Sözleşme Türü', firma.sozlesme_turu],
+        ['Sözleşme Başlangıç', formatDate(firma.sozlesme_baslangic)],
+        ['Sözleşme Bitiş', formatDate(firma.sozlesme_bitis)],
+        ['Sözleşme Bedeli', formatCurrency(firma.sozlesme_bedeli)],
+        ['Sisteme Kayıt', formatDate(firma.created_at)],
+      ], [28, 48]);
+
+      const finansal = finansalRaporResponse.data;
+      addSheet(wb, 'Finansal Rapor', [
+        ['Alan', 'Değer'],
+        ['Dönem', finansal.donem],
+        ['Toplam Gelir', formatCurrency(finansal.toplam_gelir)],
+        ['Toplam Gider', formatCurrency(finansal.toplam_gider)],
+        ['Net Kar', formatCurrency(finansal.net_kar)],
+        ['Toplam Varlık', formatCurrency(finansal.toplam_varlik)],
+        ['Toplam Borç', formatCurrency(finansal.toplam_borc)],
+        ['Özkaynak', formatCurrency(finansal.ozkaynak)],
+        ['Nakit ve Benzeri', formatCurrency(finansal.nakit_ve_benzeri)],
+        ['AI Analiz Tarihi', formatDate(finansal.ai_analiz_tarihi)],
+        ['AI Analiz', finansal.ai_analiz || '-'],
+      ], [28, 72]);
+
+      addSheet(wb, 'Bankalar', [
+        ['Banka', 'Hesap No', 'Bakiye', 'Kredi Limiti', 'Kredi Kullanımı', 'Kullanım Oranı'],
+        ...(bankalarResponse.data.length ? bankalarResponse.data.map((banka) => [
+          banka.banka_adi,
+          banka.hesap_no,
+          formatCurrency(banka.bakiye),
+          formatCurrency(banka.kredi_limiti),
+          formatCurrency(banka.kredi_kullanim),
+          banka.kredi_limiti ? `${((banka.kredi_kullanim / banka.kredi_limiti) * 100).toFixed(1)}%` : '0%',
+        ]) : [['Kayıt bulunamadı', '', '', '', '', '']]),
+      ], [24, 28, 16, 16, 18, 16]);
+
+      addSheet(wb, 'Tahsilatlar', [
+        ['Açıklama', 'Tutar', 'Vade Tarihi', 'Ödeme Tarihi', 'Durum'],
+        ...(tahsilatlarResponse.data.length ? tahsilatlarResponse.data.map((tahsilat) => [
+          tahsilat.aciklama,
+          formatCurrency(tahsilat.tutar),
+          formatDate(tahsilat.vade_tarihi),
+          formatDate(tahsilat.odeme_tarihi),
+          tahsilat.durum,
+        ]) : [['Kayıt bulunamadı', '', '', '', '']]),
+      ], [36, 16, 16, 16, 14]);
+
+      addSheet(wb, 'Projeler', [
+        ['Proje Adı', 'Durum', 'Başlangıç', 'Bitiş', 'Tutar'],
+        ...(projelerResponse.data.length ? projelerResponse.data.map((proje) => [
+          proje.proje_adi,
+          proje.durum,
+          formatDate(proje.baslangic),
+          formatDate(proje.bitis),
+          formatCurrency(proje.tutar),
+        ]) : [['Kayıt bulunamadı', '', '', '', '']]),
+      ], [36, 14, 16, 16, 16]);
+
+      addSheet(wb, 'Nakit Akis', [
+        ['Ay', 'Nakit Girişi', 'Nakit Çıkışı', 'Net', 'Kümülatif'],
+        ...(nakitAkisResponse.data.length ? nakitAkisResponse.data.map((row: any) => [
+          row.ay,
+          formatCurrency(row.giris),
+          formatCurrency(row.cikis),
+          formatCurrency(row.net ?? ((row.giris || 0) - (row.cikis || 0))),
+          formatCurrency(row.kumulatif),
+        ]) : [['Kayıt bulunamadı', '', '', '', '']]),
+      ], [16, 18, 18, 18, 18]);
+
+      addSheet(wb, 'Yatirimlar', [
+        ['Yatırım Adı', 'Tür', 'Alış', 'Güncel Değer', 'Getiri', 'Risk', 'Tarih', 'Notlar'],
+        ...(yatirimlarResponse.data.length ? yatirimlarResponse.data.map((yatirim) => [
+          yatirim.ad,
+          yatirim.tur,
+          formatCurrency(yatirim.alis),
+          formatCurrency(yatirim.guncel),
+          yatirim.alis ? `${(((yatirim.guncel - yatirim.alis) / yatirim.alis) * 100).toFixed(2)}%` : '0%',
+          yatirim.risk,
+          formatDate(yatirim.tarih),
+          yatirim.notlar || '',
+        ]) : [['Kayıt bulunamadı', '', '', '', '', '', '', '']]),
+      ], [32, 18, 16, 18, 14, 14, 16, 36]);
+
+      addSheet(wb, 'Alt Firmalar', [
+        ['Ünvan', 'Vergi No', 'Yetkili', 'Telefon', 'Adres', 'Onay Durumu'],
+        ...(altFirmalar.length ? altFirmalar.map((alt) => [
+          alt.unvan,
+          alt.vergi_no,
+          alt.yetkili_kisi || '',
+          alt.telefon || '',
+          alt.adres || '',
+          alt.onaylandi ? 'Onaylı' : 'Onay Bekliyor',
+        ]) : [['Kayıt bulunamadı', '', '', '', '', '']]),
+      ], [36, 18, 24, 18, 44, 18]);
+
+      const fileName = `${firma.unvan.replace(/[\\/:*?"<>|]/g, '').replace(/\s+/g, '_') || 'firma'}_veri_raporu.xlsx`;
+      XLSX.writeFile(wb, fileName);
+      toast.success('Excel dosyası indirildi.', { id: toastId });
+    } catch (error) {
+      toast.error('Excel dosyası oluşturulamadı.', { id: toastId });
     }
   };
 
@@ -383,6 +537,30 @@ export default function FirmaDetayPage() {
                           {format(new Date(firma.created_at), 'dd MMM yyyy', { locale: tr })}
                         </span>
                       </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="shadow-sm border-emerald-200/70 dark:border-emerald-900/40 bg-emerald-50/50 dark:bg-emerald-950/20 overflow-hidden">
+                    <CardContent className="p-5">
+                      <div className="flex items-start gap-3 mb-4">
+                        <div className="w-11 h-11 rounded-xl bg-emerald-600 text-white flex items-center justify-center shadow-sm">
+                          <FileSpreadsheet className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <h3 className="font-bold text-slate-900 dark:text-slate-100">Excel'e Aktar</h3>
+                          <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                            Firma bilgileri, finansal veriler ve ilişkili kayıtlar.
+                          </p>
+                        </div>
+                      </div>
+                      <Button
+                        type="button"
+                        onClick={handleExportExcel}
+                        className="w-full bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm"
+                      >
+                        <FileSpreadsheet className="w-4 h-4 mr-2" />
+                        Excel Dosyası İndir
+                      </Button>
                     </CardContent>
                   </Card>
                 </div>
