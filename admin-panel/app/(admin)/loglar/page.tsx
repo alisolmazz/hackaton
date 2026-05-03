@@ -140,7 +140,7 @@ function LoglarContent() {
     <div className="space-y-8 max-w-[1400px] mx-auto pb-12">
       
       {/* HEADER */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm sticky top-16 z-20">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white/5 dark:bg-[#0d1425]/60 backdrop-blur-2xl p-5 rounded-[2.5rem] border border-white/10 dark:border-white/5 shadow-[0_20px_80px_-20px_rgba(0,0,0,0.5)] z-20">
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-2xl font-bold tracking-tight">Sistem Logları</h1>

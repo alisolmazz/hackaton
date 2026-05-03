@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { ArrowDownRight, ArrowUpRight, Building2, CheckCircle2, Eye, EyeOff, Loader2, Send, Sparkles } from 'lucide-react';
-import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { ArrowDownRight, ArrowUpRight, Building2, CheckCircle2, Eye, EyeOff, Loader2, Send, Sparkles, Activity } from 'lucide-react';
+import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis, Cell } from 'recharts';
 import { toast } from 'sonner';
 
 import { KisitliAlan } from '@/components/user/KisitliAlan';
@@ -25,6 +25,7 @@ import type { OcrFinansalTaslak } from '@/lib/api';
 import { getCurrentUser } from '@/lib/auth';
 import type { User } from '@/types';
 import type { UzmanAnalizTalebi } from '@/types';
+import { useTheme } from 'next-themes';
 
 const CHART: { d: string; gelir: number; gider: number }[] = [];
 
@@ -44,6 +45,7 @@ export default function UserFinansalRaporPage() {
   const [user, setUser] = useState<User | null>(null);
   const [ocrTaslak, setOcrTaslak] = useState<OcrFinansalTaslak | null>(null);
   const { openModal } = usePremiumModal();
+  const { theme } = useTheme();
 
   const chart = ocrTaslak?.donemsel_karsilastirma?.length
     ? ocrTaslak.donemsel_karsilastirma
@@ -56,7 +58,8 @@ export default function UserFinansalRaporPage() {
     limit: Number(b.limit || 0),
     kullanim: Number(b.kullanim || 0),
     hesap: b.hesap || 'Hesap bilgisi yok',
-    renk: ['bg-teal-600', 'bg-blue-600', 'bg-amber-600'][index % 3],
+    renk: ['bg-teal-500 shadow-teal-500/20', 'bg-indigo-500 shadow-indigo-500/20', 'bg-amber-500 shadow-amber-500/20'][index % 3],
+    barColor: ['bg-teal-500', 'bg-indigo-500', 'bg-amber-500'][index % 3],
   }));
   const bekleyenTahsilatlar = ocrTaslak?.bekleyen_tahsilatlar || BEKLEYEN;
   const yapilanTahsilatlar = ocrTaslak?.yapilan_tahsilatlar || YAPILAN;
@@ -132,81 +135,148 @@ export default function UserFinansalRaporPage() {
 
   return (
     <div className="space-y-8 max-w-[1200px] mx-auto pb-12">
-      <div>
-        <div className="flex items-center gap-2">
-          <h1 className="text-2xl font-bold tracking-tight">Finansal Raporum</h1>
-          <Badge className="bg-teal-100 text-teal-800 border-none">2024 - Yıllık</Badge>
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/20">
+              <Activity className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Finansal Raporum</h1>
+              <div className="flex items-center gap-2 mt-1">
+                <p className="text-slate-500 dark:text-slate-400 text-sm font-medium">{ocrTaslak?.firma_adi || user?.firmaAdi || 'Yeni şirket'}</p>
+                <div className="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-600"></div>
+                <p className="text-slate-400 dark:text-slate-500 text-sm">{hasFinansalData ? 'Canlı Veriler' : 'Veri Bekleniyor'}</p>
+              </div>
+            </div>
+          </div>
         </div>
-        <p className="text-slate-500 mt-1">{ocrTaslak?.firma_adi || user?.firmaAdi || 'Yeni şirket'} için {hasFinansalData ? 'belgeden alınan finansal veriler gösteriliyor.' : 'henüz finansal veri girilmedi.'}</p>
+        <Badge className="bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 border-indigo-200 dark:border-indigo-500/20 hover:bg-indigo-500/20 px-3 py-1 shadow-none text-xs font-bold rounded-lg uppercase tracking-wider">
+          2024 - Yıllık
+        </Badge>
       </div>
 
-      <Tabs defaultValue="mali" className="w-full space-y-6">
-        <TabsList className="bg-slate-100/80 dark:bg-slate-800/80 p-1 w-full max-w-3xl h-auto flex-wrap">
-          <TabsTrigger value="mali" className="py-2 flex-1 text-xs sm:text-sm">Mali Veriler</TabsTrigger>
-          <TabsTrigger value="banka" className="py-2 flex-1 text-xs sm:text-sm">Bankalarim</TabsTrigger>
-          <TabsTrigger value="tahsilat" className="py-2 flex-1 text-xs sm:text-sm">Tahsilatlarim</TabsTrigger>
-          <TabsTrigger value="proje" className="py-2 flex-1 text-xs sm:text-sm">Projelerim</TabsTrigger>
-          <TabsTrigger value="ai" className="py-2 flex-1 text-xs sm:text-sm">{hasPremium ? 'AI Analiz' : 'Kilitli AI'}</TabsTrigger>
-          <TabsTrigger value="uzman" className="py-2 flex-1 text-xs sm:text-sm">{hasPremium ? 'Uzman' : 'Kilitli Uzman'}</TabsTrigger>
+      <Tabs defaultValue="mali" className="w-full space-y-8">
+        <TabsList className="bg-white/50 dark:bg-[#0a0f1c]/50 backdrop-blur-xl border border-slate-200/50 dark:border-white/5 p-1.5 w-full max-w-4xl h-auto flex-wrap rounded-[18px] shadow-sm">
+          <TabsTrigger value="mali" className="py-2.5 flex-1 text-xs sm:text-sm rounded-xl data-[state=active]:bg-white dark:data-[state=active]:bg-white/10 data-[state=active]:shadow-sm transition-all font-semibold">Mali Veriler</TabsTrigger>
+          <TabsTrigger value="banka" className="py-2.5 flex-1 text-xs sm:text-sm rounded-xl data-[state=active]:bg-white dark:data-[state=active]:bg-white/10 data-[state=active]:shadow-sm transition-all font-semibold">Bankalarım</TabsTrigger>
+          <TabsTrigger value="tahsilat" className="py-2.5 flex-1 text-xs sm:text-sm rounded-xl data-[state=active]:bg-white dark:data-[state=active]:bg-white/10 data-[state=active]:shadow-sm transition-all font-semibold">Tahsilatlar</TabsTrigger>
+          <TabsTrigger value="proje" className="py-2.5 flex-1 text-xs sm:text-sm rounded-xl data-[state=active]:bg-white dark:data-[state=active]:bg-white/10 data-[state=active]:shadow-sm transition-all font-semibold">Projelerim</TabsTrigger>
+          <TabsTrigger value="ai" className="py-2.5 flex-1 text-xs sm:text-sm rounded-xl data-[state=active]:bg-white dark:data-[state=active]:bg-white/10 data-[state=active]:shadow-sm transition-all font-semibold flex items-center justify-center gap-1.5">
+            {hasPremium ? <><Sparkles className="w-3.5 h-3.5 text-indigo-500" /> AI Analiz</> : 'Kilitli AI'}
+          </TabsTrigger>
+          <TabsTrigger value="uzman" className="py-2.5 flex-1 text-xs sm:text-sm rounded-xl data-[state=active]:bg-white dark:data-[state=active]:bg-white/10 data-[state=active]:shadow-sm transition-all font-semibold flex items-center justify-center gap-1.5">
+            {hasPremium ? <><Building2 className="w-3.5 h-3.5 text-amber-500" /> Uzman</> : 'Kilitli Uzman'}
+          </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="mali" className="space-y-6">
+        <TabsContent value="mali" className="space-y-6 animate-in fade-in-50 duration-500">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
             {[
-              { label: 'Toplam Gelir', value: gelir, color: 'text-emerald-600', Icon: ArrowUpRight },
-              { label: 'Toplam Gider', value: gider, color: 'text-red-500', Icon: ArrowDownRight },
-              { label: 'Net Kar', value: netKar, color: 'text-emerald-600', Icon: CheckCircle2 },
-              { label: 'Toplam Varlik', value: toplamVarlik, color: 'text-blue-600', Icon: Building2 },
-            ].map(({ label, value, color, Icon }) => (
-              <Card key={label} className="shadow-sm">
-                <CardContent className="p-5 flex justify-between items-start">
-                  <div>
-                    <p className="text-sm text-slate-500 font-medium">{String(label)}</p>
-                    <p className={`text-2xl font-bold mt-1 ${color}`}>TL {Number(value).toLocaleString('tr-TR')}</p>
+              { label: 'Toplam Gelir', value: gelir, color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-500/10', border: 'border-emerald-200 dark:border-emerald-500/20', Icon: ArrowUpRight, shadow: 'shadow-emerald-500/5' },
+              { label: 'Toplam Gider', value: gider, color: 'text-rose-600 dark:text-rose-400', bg: 'bg-rose-50 dark:bg-rose-500/10', border: 'border-rose-200 dark:border-rose-500/20', Icon: ArrowDownRight, shadow: 'shadow-rose-500/5' },
+              { label: 'Net Kar', value: netKar, color: 'text-indigo-600 dark:text-indigo-400', bg: 'bg-indigo-50 dark:bg-indigo-500/10', border: 'border-indigo-200 dark:border-indigo-500/20', Icon: CheckCircle2, shadow: 'shadow-indigo-500/5' },
+              { label: 'Toplam Varlık', value: toplamVarlik, color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-50 dark:bg-blue-500/10', border: 'border-blue-200 dark:border-blue-500/20', Icon: Building2, shadow: 'shadow-blue-500/5' },
+            ].map(({ label, value, color, bg, border, shadow, Icon }) => (
+              <Card key={label} className={`border-none bg-white/80 dark:bg-[#131b2e]/80 backdrop-blur-xl shadow-lg ${shadow} overflow-hidden group`}>
+                <div className={`h-1.5 w-full ${bg} ${border} border-b`}></div>
+                <CardContent className="p-6">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <p className="text-[13px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{String(label)}</p>
+                      <p className={`text-3xl font-black mt-2 tracking-tight ${color}`}>₺{Number(value).toLocaleString('tr-TR')}</p>
+                    </div>
+                    <div className={`w-10 h-10 rounded-xl ${bg} flex items-center justify-center group-hover:scale-110 transition-transform duration-300`}>
+                      <Icon className={`w-5 h-5 ${color}`} />
+                    </div>
                   </div>
-                  <Icon className="w-5 h-5 text-slate-300" />
                 </CardContent>
               </Card>
             ))}
           </div>
 
-          <Card className="shadow-sm">
-            <CardHeader className="border-b pb-3"><CardTitle className="text-lg">Donemsel Karsilastirma</CardTitle></CardHeader>
-            <CardContent className="pt-6 h-[320px]">
+          <Card className="border-none bg-white/80 dark:bg-[#131b2e]/80 backdrop-blur-xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.2)] rounded-[24px]">
+            <CardHeader className="border-b border-slate-100 dark:border-white/5 pb-4 px-6 pt-6">
+              <CardTitle className="text-lg font-bold">Dönemsel Karşılaştırma</CardTitle>
+            </CardHeader>
+            <CardContent className="pt-8 h-[380px] px-2 sm:px-6">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={chart} barGap={6}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.3} />
-                  <XAxis dataKey="d" axisLine={false} tickLine={false} tick={{ fontSize: 12 }} />
-                  <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12 }} tickFormatter={(v) => `TL ${(Number(v) / 1e6).toFixed(1)}M`} />
-                  <Tooltip formatter={(v) => `TL ${Number(v).toLocaleString('tr-TR')}`} contentStyle={{ borderRadius: '8px' }} />
-                  <Bar dataKey="gelir" name="Gelir" fill="#14b8a6" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="gider" name="Gider" fill="#f87171" radius={[4, 4, 0, 0]} />
+                <BarChart data={chart} barGap={8}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={theme === 'dark' ? '#1e293b' : '#e2e8f0'} />
+                  <XAxis dataKey="d" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: theme === 'dark' ? '#94a3b8' : '#64748b' }} dy={10} />
+                  <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: theme === 'dark' ? '#94a3b8' : '#64748b' }} tickFormatter={(v) => `₺${(Number(v) / 1e6).toFixed(1)}M`} dx={-10} />
+                  <Tooltip 
+                    cursor={{ fill: theme === 'dark' ? '#1e293b' : '#f1f5f9', opacity: 0.4 }}
+                    contentStyle={{ backgroundColor: theme === 'dark' ? '#0f172a' : '#ffffff', borderRadius: '16px', border: theme === 'dark' ? '1px solid #1e293b' : '1px solid #e2e8f0', boxShadow: '0 10px 40px rgba(0,0,0,0.1)' }}
+                    itemStyle={{ fontWeight: 'bold' }}
+                    formatter={(v) => `₺${Number(v).toLocaleString('tr-TR')}`} 
+                  />
+                  <Bar dataKey="gelir" name="Gelir" fill="url(#gelirGradient)" radius={[6, 6, 0, 0]} />
+                  <Bar dataKey="gider" name="Gider" fill="url(#giderGradient)" radius={[6, 6, 0, 0]} />
+                  
+                  <defs>
+                    <linearGradient id="gelirGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#10b981" stopOpacity={1} />
+                      <stop offset="100%" stopColor="#10b981" stopOpacity={0.6} />
+                    </linearGradient>
+                    <linearGradient id="giderGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#f43f5e" stopOpacity={1} />
+                      <stop offset="100%" stopColor="#f43f5e" stopOpacity={0.6} />
+                    </linearGradient>
+                  </defs>
                 </BarChart>
               </ResponsiveContainer>
             </CardContent>
           </Card>
         </TabsContent>
 
-        <TabsContent value="banka" className="space-y-6">
-          <Card className="shadow-sm border-l-4 border-l-teal-500">
-            <CardContent className="p-5 flex justify-between items-center">
-              <div><p className="text-sm text-slate-500 font-medium">Toplam Banka Bakiyesi</p><p className="text-3xl font-black text-teal-600 mt-1">TL {toplamBakiye.toLocaleString('tr-TR')}</p></div>
-              <Building2 className="w-10 h-10 text-teal-200" />
+        <TabsContent value="banka" className="space-y-6 animate-in fade-in-50 duration-500">
+          <Card className="border-none bg-gradient-to-r from-teal-500 to-emerald-600 dark:from-teal-600 dark:to-emerald-800 text-white shadow-xl shadow-teal-500/20 rounded-[24px]">
+            <CardContent className="p-8 flex flex-col md:flex-row justify-between items-center gap-6">
+              <div>
+                <p className="text-teal-100 font-bold uppercase tracking-wider text-sm mb-1">Toplam Banka Bakiyesi</p>
+                <p className="text-4xl md:text-5xl font-black tracking-tight">₺{toplamBakiye.toLocaleString('tr-TR')}</p>
+              </div>
+              <div className="w-16 h-16 rounded-2xl bg-white/10 backdrop-blur-md flex items-center justify-center border border-white/20">
+                <Building2 className="w-8 h-8 text-white" />
+              </div>
             </CardContent>
           </Card>
+          
           {bankalar.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {bankalar.map((b, i) => {
                 const pct = b.limit > 0 ? Math.round((b.kullanim / b.limit) * 100) : 0;
                 return (
-                  <Card key={b.ad} className="shadow-sm">
-                    <CardContent className="p-6 space-y-4">
-                      <div className="flex items-center gap-3"><div className={`w-10 h-10 rounded-full ${b.renk} flex items-center justify-center text-white font-bold text-sm`}>{b.ad.substring(0, 2)}</div><h4 className="font-bold">{b.ad}</h4></div>
-                      <p className="text-2xl font-black text-emerald-600">TL {b.bakiye.toLocaleString('tr-TR')}</p>
-                      <Progress value={pct} className="h-2" />
-                      <div className="flex items-center justify-between pt-2 border-t">
-                        <span className="text-xs text-slate-500 font-mono">{hesapGoster[i] ? `TR12 3456 7890 ${b.hesap.slice(-4)}` : b.hesap}</span>
-                        <button onClick={() => setHesapGoster(p => ({ ...p, [i]: !p[i] }))} className="text-slate-400 hover:text-teal-600">{hesapGoster[i] ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}</button>
+                  <Card key={b.ad} className="border-none bg-white/80 dark:bg-[#131b2e]/80 backdrop-blur-xl shadow-lg rounded-[20px] overflow-hidden">
+                    <CardContent className="p-6 space-y-6">
+                      <div className="flex items-center gap-4">
+                        <div className={`w-12 h-12 rounded-2xl ${b.renk} flex items-center justify-center text-white font-extrabold text-lg shadow-lg`}>
+                          {b.ad.substring(0, 2).toUpperCase()}
+                        </div>
+                        <h4 className="font-extrabold text-lg text-slate-900 dark:text-white leading-tight">{b.ad}</h4>
+                      </div>
+                      
+                      <div>
+                        <p className="text-sm font-bold text-slate-500 dark:text-slate-400 mb-1">Kullanılabilir Bakiye</p>
+                        <p className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">₺{b.bakiye.toLocaleString('tr-TR')}</p>
+                      </div>
+
+                      <div className="space-y-2">
+                        <div className="flex justify-between text-xs font-bold text-slate-500">
+                          <span>Limit Kullanımı</span>
+                          <span>%{pct}</span>
+                        </div>
+                        <Progress value={pct} className={`h-2.5 ${b.barColor} bg-slate-100 dark:bg-white/5`} />
+                      </div>
+                      
+                      <div className="flex items-center justify-between pt-4 border-t border-slate-100 dark:border-white/5 bg-slate-50/50 dark:bg-white/5 -mx-6 -mb-6 px-6 py-4">
+                        <span className="text-sm text-slate-600 dark:text-slate-300 font-mono font-medium tracking-widest">
+                          {hesapGoster[i] ? `TR12 3456 7890 ${b.hesap.slice(-4)}` : b.hesap}
+                        </span>
+                        <button onClick={() => setHesapGoster(p => ({ ...p, [i]: !p[i] }))} className="w-8 h-8 rounded-full bg-white dark:bg-white/10 border border-slate-200 dark:border-white/10 flex items-center justify-center text-slate-400 hover:text-indigo-600 transition-colors shadow-sm">
+                          {hesapGoster[i] ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
                       </div>
                     </CardContent>
                   </Card>
@@ -214,41 +284,138 @@ export default function UserFinansalRaporPage() {
               })}
             </div>
           ) : (
-            <Card className="shadow-sm"><CardContent className="py-12 text-center"><Building2 className="w-10 h-10 mx-auto text-slate-300 mb-3" /><p className="text-slate-500 font-medium">Belgede banka bilgisi bulunamadı</p><p className="text-sm text-slate-400 mt-1">Banka ekstresi veya mizan yükleyerek banka verilerinizi otomatik doldurun.</p></CardContent></Card>
+            <Card className="border-none bg-white/50 dark:bg-[#131b2e]/50 border border-dashed border-slate-300 dark:border-slate-700 rounded-[24px]">
+              <CardContent className="py-16 text-center">
+                <div className="w-16 h-16 mx-auto bg-slate-100 dark:bg-white/5 rounded-full flex items-center justify-center mb-4">
+                  <Building2 className="w-8 h-8 text-slate-400" />
+                </div>
+                <p className="text-slate-900 dark:text-white font-bold text-lg">Banka bilgisi bulunamadı</p>
+                <p className="text-sm text-slate-500 mt-2 max-w-sm mx-auto">Banka ekstresi veya mizan yükleyerek banka verilerinizi otomatik doldurabilirsiniz.</p>
+              </CardContent>
+            </Card>
           )}
         </TabsContent>
 
-        <TabsContent value="tahsilat">
-          {bekleyenTahsilatlar.length > 0 || yapilanTahsilatlar.length > 0 ? (
-            <Card><CardContent className="p-0"><Table><TableHeader><TableRow><TableHead>Açıklama</TableHead><TableHead>Vade / Tarih</TableHead><TableHead>Tutar</TableHead><TableHead>Durum</TableHead></TableRow></TableHeader><TableBody>
-              {bekleyenTahsilatlar.map(t => <TableRow key={t.aciklama}><TableCell>{t.aciklama}</TableCell><TableCell>{t.vade}</TableCell><TableCell>TL {t.tutar.toLocaleString('tr-TR')}</TableCell><TableCell><Badge variant="outline" className={Number(t.gecikme || 0) > 0 ? 'border-red-200 text-red-700 bg-red-50' : 'border-amber-200 text-amber-700 bg-amber-50'}>{Number(t.gecikme || 0) > 0 ? `${t.gecikme} gün gecikti` : 'Bekliyor'}</Badge></TableCell></TableRow>)}
-              {yapilanTahsilatlar.map(t => <TableRow key={t.aciklama}><TableCell>{t.aciklama}</TableCell><TableCell>{t.tarih}</TableCell><TableCell>TL {t.tutar.toLocaleString('tr-TR')}</TableCell><TableCell><Badge variant="outline" className="border-emerald-200 text-emerald-700 bg-emerald-50">Ödendi</Badge></TableCell></TableRow>)}
-            </TableBody></Table></CardContent></Card>
-          ) : (
-            <Card className="shadow-sm"><CardContent className="py-12 text-center"><p className="text-slate-500 font-medium">Belgede tahsilat bilgisi bulunamadı</p><p className="text-sm text-slate-400 mt-1">Alacak/borç listesi içeren bir belge yükleyin.</p></CardContent></Card>
-          )}
+        <TabsContent value="tahsilat" className="animate-in fade-in-50 duration-500">
+          <Card className="border-none bg-white/80 dark:bg-[#131b2e]/80 backdrop-blur-xl shadow-lg rounded-[24px] overflow-hidden">
+            <CardHeader className="border-b border-slate-100 dark:border-white/5 bg-slate-50/50 dark:bg-white/5 px-6 py-5">
+              <CardTitle className="text-lg font-bold">Bekleyen ve Yapılan Tahsilatlar</CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+              {bekleyenTahsilatlar.length > 0 || yapilanTahsilatlar.length > 0 ? (
+                <Table>
+                  <TableHeader className="bg-transparent">
+                    <TableRow className="border-slate-100 dark:border-white/5 hover:bg-transparent">
+                      <TableHead className="pl-6 font-bold text-slate-500 uppercase text-xs tracking-wider">Açıklama</TableHead>
+                      <TableHead className="font-bold text-slate-500 uppercase text-xs tracking-wider">Vade / Tarih</TableHead>
+                      <TableHead className="font-bold text-slate-500 uppercase text-xs tracking-wider">Tutar</TableHead>
+                      <TableHead className="pr-6 font-bold text-slate-500 uppercase text-xs tracking-wider text-right">Durum</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {bekleyenTahsilatlar.map(t => (
+                      <TableRow key={t.aciklama} className="border-slate-100 dark:border-white/5 hover:bg-slate-50 dark:hover:bg-white/5 transition-colors group">
+                        <TableCell className="pl-6 font-semibold text-slate-900 dark:text-white">{t.aciklama}</TableCell>
+                        <TableCell className="text-slate-500 font-medium">{t.vade}</TableCell>
+                        <TableCell className="font-bold text-amber-600 dark:text-amber-400">₺{t.tutar.toLocaleString('tr-TR')}</TableCell>
+                        <TableCell className="pr-6 text-right">
+                          <Badge variant="outline" className={`shadow-none font-bold px-3 py-1 ${Number(t.gecikme || 0) > 0 ? 'border-rose-200 text-rose-700 bg-rose-50 dark:bg-rose-500/10 dark:border-rose-500/20 dark:text-rose-400' : 'border-amber-200 text-amber-700 bg-amber-50 dark:bg-amber-500/10 dark:border-amber-500/20 dark:text-amber-400'}`}>
+                            {Number(t.gecikme || 0) > 0 ? (
+                              <span className="flex items-center gap-1.5">
+                                <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse"></span>
+                                {t.gecikme} gün gecikti
+                              </span>
+                            ) : 'Bekliyor'}
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                    {yapilanTahsilatlar.map(t => (
+                      <TableRow key={t.aciklama} className="border-slate-100 dark:border-white/5 hover:bg-slate-50 dark:hover:bg-white/5 transition-colors">
+                        <TableCell className="pl-6 font-semibold text-slate-900 dark:text-white">{t.aciklama}</TableCell>
+                        <TableCell className="text-slate-500 font-medium">{t.tarih}</TableCell>
+                        <TableCell className="font-bold text-emerald-600 dark:text-emerald-400">₺{t.tutar.toLocaleString('tr-TR')}</TableCell>
+                        <TableCell className="pr-6 text-right">
+                          <Badge variant="outline" className="shadow-none font-bold px-3 py-1 border-emerald-200 text-emerald-700 bg-emerald-50 dark:bg-emerald-500/10 dark:border-emerald-500/20 dark:text-emerald-400 flex items-center gap-1.5 w-max ml-auto">
+                            <CheckCircle2 className="w-3.5 h-3.5" /> Ödendi
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              ) : (
+                <div className="py-16 text-center">
+                  <p className="text-slate-500 font-medium">Belgede tahsilat bilgisi bulunamadı</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </TabsContent>
 
-        <TabsContent value="proje">
+        <TabsContent value="proje" className="animate-in fade-in-50 duration-500">
           {projeler.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              {projeler.map(p => <Card key={p.ad}><CardContent className="p-5"><div className="flex items-center justify-between"><h4 className="font-bold">{p.ad}</h4><Badge variant="outline" className={p.durum === 'bitti' ? 'border-emerald-200 text-emerald-700' : 'border-blue-200 text-blue-700'}>{p.durum === 'bitti' ? 'Tamamlandı' : 'Devam Ediyor'}</Badge></div><p className="text-sm text-slate-500 mt-1">{p.baslangic} → {p.bitis || 'Devam ediyor'}</p><p className="font-bold text-lg mt-2">TL {p.tutar.toLocaleString('tr-TR')}</p></CardContent></Card>)}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {projeler.map(p => (
+                <Card key={p.ad} className="border-none bg-white/80 dark:bg-[#131b2e]/80 backdrop-blur-xl shadow-lg rounded-[20px] overflow-hidden group hover:shadow-xl transition-all duration-300">
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between mb-4">
+                      <h4 className="font-extrabold text-lg text-slate-900 dark:text-white">{p.ad}</h4>
+                      <Badge variant="outline" className={`shadow-none font-bold px-3 py-1 ${p.durum === 'bitti' ? 'border-emerald-200 text-emerald-700 bg-emerald-50 dark:bg-emerald-500/10 dark:border-emerald-500/20 dark:text-emerald-400' : 'border-indigo-200 text-indigo-700 bg-indigo-50 dark:bg-indigo-500/10 dark:border-indigo-500/20 dark:text-indigo-400'}`}>
+                        {p.durum === 'bitti' ? 'Tamamlandı' : 'Devam Ediyor'}
+                      </Badge>
+                    </div>
+                    
+                    <div className="space-y-4">
+                      <div className="bg-slate-50 dark:bg-white/5 rounded-xl p-3 flex justify-between items-center">
+                        <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Tarih Aralığı</span>
+                        <span className="text-sm font-medium text-slate-900 dark:text-white">{p.baslangic} → {p.bitis || 'Devam ediyor'}</span>
+                      </div>
+                      
+                      <div>
+                        <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Proje Tutarı</p>
+                        <p className="font-black text-2xl text-slate-900 dark:text-white">₺{p.tutar.toLocaleString('tr-TR')}</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
             </div>
           ) : (
-            <Card className="shadow-sm"><CardContent className="py-12 text-center"><p className="text-slate-500 font-medium">Belgede proje bilgisi bulunamadı</p><p className="text-sm text-slate-400 mt-1">Proje/sözleşme bilgisi içeren bir belge yükleyin.</p></CardContent></Card>
+            <Card className="border-none bg-white/50 dark:bg-[#131b2e]/50 border border-dashed border-slate-300 dark:border-slate-700 rounded-[24px]">
+              <CardContent className="py-16 text-center">
+                <p className="text-slate-500 font-medium">Belgede proje bilgisi bulunamadı</p>
+              </CardContent>
+            </Card>
           )}
         </TabsContent>
 
-        <TabsContent value="ai">
+        <TabsContent value="ai" className="animate-in fade-in-50 duration-500">
           {hasPremium ? (
-            <Card className="shadow-sm">
-              <CardHeader className="border-b">
-                <CardTitle className="flex items-center gap-2"><Sparkles className="w-5 h-5 text-amber-500" /> AI Finansal Analiz</CardTitle>
-                <CardDescription>Girili mali verileriniz Gemini ile analiz edilir ve sonuc burada saklanir.</CardDescription>
+            <Card className="border-none bg-white/80 dark:bg-[#131b2e]/80 backdrop-blur-xl shadow-lg rounded-[24px] overflow-hidden">
+              <CardHeader className="border-b border-slate-100 dark:border-white/5 bg-slate-50/50 dark:bg-white/5 px-6 py-5">
+                <CardTitle className="flex items-center gap-2 text-lg font-bold">
+                  <div className="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-500/20 flex items-center justify-center">
+                    <Sparkles className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                  </div>
+                  AI Finansal Analiz
+                </CardTitle>
+                <CardDescription className="font-medium mt-2">Girili mali verileriniz Gemini ile analiz edilir ve sonuç burada saklanır.</CardDescription>
               </CardHeader>
-              <CardContent className="p-6 space-y-5">
-                <Button onClick={handleAIAnaliz} disabled={aiLoading} className="bg-teal-700 hover:bg-teal-800 text-white">{aiLoading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Analiz ediliyor...</> : <><Sparkles className="w-4 h-4 mr-2" /> AI Analiz Olustur</>}</Button>
-                {aiAnaliz ? <div className="rounded-lg border bg-white p-5 whitespace-pre-line leading-7 text-sm text-slate-700">{aiAnaliz}</div> : <div className="rounded-lg border border-dashed p-6 text-sm text-slate-500">Henuz AI analizi olusturulmadi.</div>}
+              <CardContent className="p-6 space-y-6">
+                <Button onClick={handleAIAnaliz} disabled={aiLoading} className="h-12 px-6 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-bold shadow-lg shadow-indigo-500/20">
+                  {aiLoading ? <><Loader2 className="w-5 h-5 mr-2 animate-spin" /> Yapay Zeka Analiz Ediyor...</> : <><Sparkles className="w-5 h-5 mr-2" /> Yeni AI Analiz Oluştur</>}
+                </Button>
+                
+                {aiAnaliz ? (
+                  <div className="rounded-[20px] bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/5 p-6 md:p-8 whitespace-pre-line leading-relaxed text-sm md:text-base text-slate-700 dark:text-slate-300 font-medium shadow-inner">
+                    {aiAnaliz}
+                  </div>
+                ) : (
+                  <div className="rounded-[20px] border border-dashed border-slate-200 dark:border-slate-700 bg-white/50 dark:bg-transparent p-12 text-center text-sm font-medium text-slate-500">
+                    Henüz AI analizi oluşturulmadı.
+                  </div>
+                )}
               </CardContent>
             </Card>
           ) : (
@@ -256,21 +423,46 @@ export default function UserFinansalRaporPage() {
           )}
         </TabsContent>
 
-        <TabsContent value="uzman">
+        <TabsContent value="uzman" className="animate-in fade-in-50 duration-500">
           {hasPremium ? (
-            <Card className="shadow-sm">
-              <CardHeader className="border-b">
-                <CardTitle>Uzman Gorusu</CardTitle>
-                <CardDescription>Talep admin paneline duser; uzman finansal verileri inceleyip raporu gonderir.</CardDescription>
+            <Card className="border border-white/10 dark:border-white/5 bg-white/5 dark:bg-[#0d1425]/60 backdrop-blur-2xl shadow-[0_20px_80px_-20px_rgba(0,0,0,0.5)] rounded-[2.5rem] overflow-hidden">
+              <CardHeader className="border-b border-slate-100 dark:border-white/5 bg-amber-50/50 dark:bg-amber-500/5 px-6 py-5">
+                <CardTitle className="flex items-center gap-2 text-lg font-bold">
+                  <div className="w-8 h-8 rounded-full bg-amber-100 dark:bg-amber-500/20 flex items-center justify-center">
+                    <Building2 className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                  </div>
+                  Uzman Görüşü
+                </CardTitle>
+                <CardDescription className="font-medium mt-2">Talep admin paneline düşer; uzman finansal verileri inceleyip profesyonel raporu size iletir.</CardDescription>
               </CardHeader>
-              <CardContent className="p-6 space-y-5">
-                {!uzmanTalep && <Button onClick={handleUzmanTalep} disabled={uzmanLoading} className="bg-amber-600 hover:bg-amber-700 text-white">{uzmanLoading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Talep gonderiliyor...</> : <><Send className="w-4 h-4 mr-2" /> Uzman Analizi Al</>}</Button>}
-                {uzmanTalep?.durum === 'bekliyor' && <div className="rounded-lg border border-amber-200 bg-amber-50 p-5 text-amber-900">Uzman analizi bekleniyor. Talebiniz admin paneline iletildi.</div>}
-                {uzmanTalep?.durum === 'tamamlandi' && <div className="rounded-lg border bg-white p-5 whitespace-pre-line leading-7 text-sm text-slate-700">{uzmanTalep.uzman_gorusu}</div>}
+              <CardContent className="p-6 space-y-6">
+                {!uzmanTalep && (
+                  <Button onClick={handleUzmanTalep} disabled={uzmanLoading} className="h-12 px-6 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold shadow-lg shadow-amber-500/20">
+                    {uzmanLoading ? <><Loader2 className="w-5 h-5 mr-2 animate-spin" /> Talep Gönderiliyor...</> : <><Send className="w-5 h-5 mr-2" /> Uzman Analizi Talep Et</>}
+                  </Button>
+                )}
+                
+                {uzmanTalep?.durum === 'bekliyor' && (
+                  <div className="rounded-[20px] border border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 p-6 flex items-start gap-4">
+                    <div className="w-10 h-10 rounded-full bg-amber-200 dark:bg-amber-500/30 flex items-center justify-center shrink-0">
+                      <div className="w-2 h-2 rounded-full bg-amber-600 dark:bg-amber-400 animate-ping"></div>
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-amber-900 dark:text-amber-200">Uzman analizi bekleniyor</h4>
+                      <p className="text-amber-700 dark:text-amber-400/80 mt-1 font-medium text-sm">Talebiniz uzman ekibimize iletildi. En kısa sürede finansal verileriniz incelenip raporunuz bu alana yüklenecektir.</p>
+                    </div>
+                  </div>
+                )}
+                
+                {uzmanTalep?.durum === 'tamamlandi' && (
+                  <div className="rounded-[20px] bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/5 p-6 md:p-8 whitespace-pre-line leading-relaxed text-sm md:text-base text-slate-700 dark:text-slate-300 font-medium shadow-inner overflow-hidden break-words" style={{ overflowWrap: 'anywhere', wordBreak: 'break-word' }}>
+                    {uzmanTalep.uzman_gorusu}
+                  </div>
+                )}
               </CardContent>
             </Card>
           ) : (
-            <KisitliAlan ozellikAdi="Uzman Gorusu" paketAdi="Uzman Gorusu veya Premium Bundle" onPaketTikla={() => openModal('uzman_gorusu')} />
+            <KisitliAlan ozellikAdi="Uzman Görüşü" paketAdi="Uzman Görüşü veya Premium Bundle" onPaketTikla={() => openModal('uzman_gorusu')} />
           )}
         </TabsContent>
       </Tabs>

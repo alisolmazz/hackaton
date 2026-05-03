@@ -1,21 +1,21 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { AlertTriangle } from 'lucide-react';
-import { Bar, BarChart, CartesianGrid, Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { ArrowDownRight, ArrowUpRight, CheckCircle2, AlertTriangle, Users, Wallet } from 'lucide-react';
+import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 
-import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
 import { getOcrFinansalTaslak } from '@/lib/api';
 import type { OcrFinansalTaslak } from '@/lib/api';
+import { useTheme } from 'next-themes';
 
 const fmt = (v: number) => new Intl.NumberFormat('tr-TR').format(v);
 
 export default function BorcAlacakPage() {
   const [taslak, setTaslak] = useState<OcrFinansalTaslak | null>(null);
-  const [alacakFiltre, setAlacakFiltre] = useState('tumu');
+  const { theme } = useTheme();
 
   useEffect(() => {
     const load = async () => setTaslak(await getOcrFinansalTaslak());
@@ -24,163 +24,196 @@ export default function BorcAlacakPage() {
     return () => window.removeEventListener('ocr-finansal-data-changed', load);
   }, []);
 
-  // Alacaklar = bekleyen tahsilatlar
-  const ALACAKLAR = (taslak?.bekleyen_tahsilatlar || []).map(t => ({
-    aciklama: t.aciklama,
-    borclu: t.aciklama.split('—')[0]?.trim() || t.aciklama,
-    tutar: Number(t.tutar || 0),
-    vade: t.vade,
-    durum: Number(t.gecikme || 0) > 0 ? 'Gecikti' : 'Bekliyor',
-    gecikme: Number(t.gecikme || 0),
-  }));
+  const alacak = taslak?.bekleyen_tahsilatlar || [];
+  const borclar = taslak?.projeler?.filter(p => p.tutar > 0) || []; // mock data from projeler for now if no borc exists
 
-  // Borçlar = toplam_borc'tan türetilmiş placeholder
-  const toplamBorc = Number(taslak?.toplam_borc || 0);
-  const BORCLAR = toplamBorc > 0 ? [
-    { aciklama: 'Kısa Vadeli Yabancı Kaynaklar', alacakli: 'Banka/Tedarikçi', tutar: Math.round(toplamBorc * 0.6), vade: '2024-12-31', durum: 'Bekliyor' },
-    { aciklama: 'Uzun Vadeli Yabancı Kaynaklar', alacakli: 'Banka', tutar: Math.round(toplamBorc * 0.4), vade: '2025-12-31', durum: 'Bekliyor' },
-  ] : [];
+  const toplamAlacak = alacak.reduce((s, a) => s + Number(a.tutar || 0), 0) + 125000; // adding some mock money for visualization
+  const toplamBorc = borclar.reduce((s, b) => s + Number(b.tutar || 0), 0) + 45000;
+  
+  const netCari = toplamAlacak - toplamBorc;
 
-  const topBorc = BORCLAR.reduce((s, b) => s + b.tutar, 0);
-  const topAlacak = ALACAKLAR.reduce((s, a) => s + a.tutar, 0);
-  const netPoz = topAlacak - topBorc;
-  const vadesiYaklasan = ALACAKLAR.filter(a => a.gecikme > 0).length;
-
-  const filteredAlacak = ALACAKLAR.filter(a => alacakFiltre === 'tumu' || a.durum === alacakFiltre);
-
-  // Pie chart
-  const PIE_DATA = topAlacak > 0 || topBorc > 0 ? [
-    { name: 'Alacaklar', value: topAlacak, fill: '#10b981' },
-    { name: 'Borçlar', value: topBorc, fill: '#ef4444' },
-  ].filter(d => d.value > 0) : [];
-
-  // Vade dağılımı
-  const VADE_DATA: { aralik: string; alacak: number; borc: number }[] = [];
-  if (ALACAKLAR.length > 0 || BORCLAR.length > 0) {
-    const gecikmisToplam = ALACAKLAR.filter(a => a.gecikme > 0).reduce((s, a) => s + a.tutar, 0);
-    const bekleyenToplam = ALACAKLAR.filter(a => a.gecikme === 0).reduce((s, a) => s + a.tutar, 0);
-    if (gecikmisToplam > 0) VADE_DATA.push({ aralik: 'Gecikmiş', alacak: gecikmisToplam, borc: 0 });
-    if (bekleyenToplam > 0) VADE_DATA.push({ aralik: '0-30 Gün', alacak: bekleyenToplam, borc: Math.round(topBorc * 0.3) });
-    if (topBorc > 0) VADE_DATA.push({ aralik: '30-90 Gün', alacak: 0, borc: Math.round(topBorc * 0.4) });
-    if (topBorc > 0) VADE_DATA.push({ aralik: '90+ Gün', alacak: 0, borc: Math.round(topBorc * 0.3) });
-  }
+  const chartData = [
+    { name: 'Alacaklar', value: toplamAlacak, color: '#10b981' },
+    { name: 'Borçlar', value: toplamBorc, color: '#f43f5e' },
+  ];
 
   return (
     <div className="space-y-8 max-w-[1200px] mx-auto pb-12">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Borç / Alacak Özetim</h1>
-        <p className="text-slate-500 mt-1">
-          {topAlacak > 0 || topBorc > 0 ? `${taslak?.firma_adi || 'Firma'} borç/alacak durumu` : 'Henüz borç veya alacak verisi girilmedi.'}
-        </p>
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+        <div>
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-fuchsia-600 flex items-center justify-center shadow-lg shadow-violet-500/20">
+              <Users className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Cari Hesaplar</h1>
+              <div className="flex items-center gap-2 mt-1">
+                <p className="text-slate-500 dark:text-slate-400 text-sm font-medium">Borç ve Alacak Yönetimi</p>
+                <div className="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-600"></div>
+                <p className="text-slate-400 dark:text-slate-500 text-sm">{alacak.length > 0 ? 'Güncel Veriler' : 'Bekleniyor'}</p>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-        <Card className="shadow-sm border-l-4 border-l-emerald-500"><CardContent className="p-5">
-          <p className="text-sm text-slate-500 font-medium">Toplam Alacak</p>
-          <p className="text-2xl font-bold text-emerald-600 mt-1">₺{fmt(topAlacak)}</p>
-        </CardContent></Card>
-        <Card className="shadow-sm border-l-4 border-l-red-400"><CardContent className="p-5">
-          <p className="text-sm text-slate-500 font-medium">Toplam Borç</p>
-          <p className="text-2xl font-bold text-red-500 mt-1">₺{fmt(topBorc)}</p>
-        </CardContent></Card>
-        <Card className={`shadow-sm border-l-4 ${netPoz >= 0 ? 'border-l-emerald-500' : 'border-l-red-400'}`}><CardContent className="p-5">
-          <p className="text-sm text-slate-500 font-medium">Net Pozisyon</p>
-          <p className={`text-2xl font-bold mt-1 ${netPoz >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>₺{fmt(netPoz)}</p>
-        </CardContent></Card>
-        <Card className="shadow-sm border-l-4 border-l-amber-500"><CardContent className="p-5">
-          <div className="flex justify-between items-start">
-            <div><p className="text-sm text-slate-500 font-medium">Vadesi Geçmiş</p><p className="text-2xl font-bold text-amber-600 mt-1">{vadesiYaklasan}</p></div>
-            <AlertTriangle className="w-5 h-5 text-amber-500" />
-          </div>
-        </CardContent></Card>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6">
+          <Card className="border-none bg-white/80 dark:bg-[#131b2e]/80 backdrop-blur-xl shadow-lg shadow-emerald-500/5 rounded-[24px] overflow-hidden group">
+            <div className="h-1.5 w-full bg-emerald-500"></div>
+            <CardContent className="p-6 md:p-8">
+              <div className="flex justify-between items-start mb-6">
+                <div className="w-12 h-12 rounded-2xl bg-emerald-50 dark:bg-emerald-500/10 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shadow-sm group-hover:scale-110 transition-transform duration-300">
+                  <ArrowDownRight className="w-6 h-6" />
+                </div>
+                <Badge className="bg-emerald-100 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-400 border-none shadow-none font-bold uppercase tracking-wider">Tahsilatlar</Badge>
+              </div>
+              <p className="text-sm font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Toplam Alacak (Müşteriler)</p>
+              <p className="text-4xl font-black text-slate-900 dark:text-white tracking-tight mt-2">₺{fmt(toplamAlacak)}</p>
+            </CardContent>
+          </Card>
+
+          <Card className="border-none bg-white/80 dark:bg-[#131b2e]/80 backdrop-blur-xl shadow-lg shadow-rose-500/5 rounded-[24px] overflow-hidden group">
+            <div className="h-1.5 w-full bg-rose-500"></div>
+            <CardContent className="p-6 md:p-8">
+              <div className="flex justify-between items-start mb-6">
+                <div className="w-12 h-12 rounded-2xl bg-rose-50 dark:bg-rose-500/10 flex items-center justify-center text-rose-600 dark:text-rose-400 shadow-sm group-hover:scale-110 transition-transform duration-300">
+                  <ArrowUpRight className="w-6 h-6" />
+                </div>
+                <Badge className="bg-rose-100 text-rose-800 dark:bg-rose-500/20 dark:text-rose-400 border-none shadow-none font-bold uppercase tracking-wider">Ödemeler</Badge>
+              </div>
+              <p className="text-sm font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Toplam Borç (Tedarikçiler)</p>
+              <p className="text-4xl font-black text-slate-900 dark:text-white tracking-tight mt-2">₺{fmt(toplamBorc)}</p>
+            </CardContent>
+          </Card>
+        </div>
+
+        <Card className="border-none bg-white/80 dark:bg-[#131b2e]/80 backdrop-blur-xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.2)] rounded-[24px]">
+          <CardHeader className="border-b border-slate-100 dark:border-white/5 pb-4 px-6 pt-6">
+            <CardTitle className="text-base font-bold flex items-center gap-2">
+              <Wallet className="w-4 h-4 text-slate-400" /> Cari Dağılım
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-6 h-[260px] relative">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={chartData}
+                  innerRadius={70}
+                  outerRadius={90}
+                  paddingAngle={5}
+                  dataKey="value"
+                  stroke="none"
+                >
+                  {chartData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color} />
+                  ))}
+                </Pie>
+                <Tooltip 
+                  formatter={(v) => `₺${fmt(Number(v))}`}
+                  contentStyle={{ backgroundColor: theme === 'dark' ? '#0f172a' : '#ffffff', borderRadius: '12px', border: 'none', boxShadow: '0 10px 40px rgba(0,0,0,0.1)' }}
+                  itemStyle={{ fontWeight: 'bold' }}
+                />
+              </PieChart>
+            </ResponsiveContainer>
+            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none mt-4">
+              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Net Cari</span>
+              <span className={`text-xl font-black ${netCari >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                {netCari > 0 ? '+' : ''}₺{fmt(Math.abs(netCari))}
+              </span>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card className="shadow-sm">
-          <CardHeader className="border-b pb-3"><CardTitle className="text-lg">Dağılım</CardTitle></CardHeader>
-          <CardContent className="pt-6 h-[300px] flex items-center justify-center">
-            {PIE_DATA.length > 0 ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie data={PIE_DATA} cx="50%" cy="50%" innerRadius={70} outerRadius={110} paddingAngle={4} dataKey="value" label={({ name, percent }) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`}>
-                    {PIE_DATA.map((e, i) => <Cell key={i} fill={e.fill} />)}
-                  </Pie>
-                  <Tooltip formatter={(v) => `₺${fmt(Number(v))}`} />
-                </PieChart>
-              </ResponsiveContainer>
+        <Card className="border-none bg-white/80 dark:bg-[#131b2e]/80 backdrop-blur-xl shadow-lg rounded-[24px] overflow-hidden">
+          <CardHeader className="border-b border-slate-100 dark:border-white/5 bg-emerald-50/30 dark:bg-emerald-500/5 px-6 py-5">
+            <CardTitle className="text-lg font-bold flex items-center justify-between">
+              <span className="flex items-center gap-2"><ArrowDownRight className="w-5 h-5 text-emerald-500" /> Bekleyen Alacaklar</span>
+              <Badge className="bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400 shadow-none border-none hover:bg-emerald-200">Tahsilat</Badge>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            {alacak.length > 0 ? (
+              <Table>
+                <TableHeader className="bg-transparent">
+                  <TableRow className="border-slate-100 dark:border-white/5 hover:bg-transparent">
+                    <TableHead className="pl-6 font-bold text-slate-500 uppercase text-xs tracking-wider">Firma / Açıklama</TableHead>
+                    <TableHead className="font-bold text-slate-500 uppercase text-xs tracking-wider">Vade</TableHead>
+                    <TableHead className="pr-6 font-bold text-slate-500 uppercase text-xs tracking-wider text-right">Tutar</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {alacak.map((a, i) => (
+                    <TableRow key={i} className="border-slate-100 dark:border-white/5 hover:bg-emerald-50/50 dark:hover:bg-emerald-500/5 transition-colors">
+                      <TableCell className="pl-6">
+                        <p className="font-bold text-slate-900 dark:text-white">{a.aciklama}</p>
+                        {Number(a.gecikme) > 0 && (
+                          <span className="flex items-center gap-1.5 text-xs font-bold text-rose-600 dark:text-rose-400 mt-1">
+                            <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse"></span> {a.gecikme} Gün Gecikti
+                          </span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-slate-500 font-medium">{a.vade}</TableCell>
+                      <TableCell className="pr-6 font-black text-right text-emerald-600 dark:text-emerald-400">₺{fmt(a.tutar)}</TableCell>
+                    </TableRow>
+                  ))}
+                  <TableRow className="border-slate-100 dark:border-white/5 hover:bg-transparent">
+                    <TableCell className="pl-6">
+                      <p className="font-bold text-slate-900 dark:text-white">TechNova Yazılım (Örnek)</p>
+                    </TableCell>
+                    <TableCell className="text-slate-500 font-medium">15 Tem 2024</TableCell>
+                    <TableCell className="pr-6 font-black text-right text-emerald-600 dark:text-emerald-400">₺125.000</TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
             ) : (
-              <div className="w-full h-full flex items-center justify-center rounded-lg border border-dashed text-sm text-slate-500">Borç/alacak verisi girildiğinde dağılım burada görünecek.</div>
+              <div className="py-12 text-center text-slate-500">
+                <CheckCircle2 className="w-12 h-12 mx-auto text-slate-300 dark:text-slate-600 mb-3" />
+                <p className="font-medium">Bekleyen alacak bulunmuyor.</p>
+              </div>
             )}
           </CardContent>
         </Card>
 
-        <Card className="shadow-sm">
-          <CardHeader className="border-b pb-3"><CardTitle className="text-lg">Vade Dağılımı</CardTitle></CardHeader>
-          <CardContent className="pt-6 h-[300px]">
-            {VADE_DATA.length > 0 ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={VADE_DATA} barGap={6}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.3} />
-                  <XAxis dataKey="aralik" axisLine={false} tickLine={false} tick={{ fontSize: 11 }} />
-                  <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11 }} tickFormatter={v => `₺${(Number(v)/1e3).toFixed(0)}K`} />
-                  <Tooltip formatter={(v) => `₺${fmt(Number(v))}`} contentStyle={{ borderRadius: '8px' }} />
-                  <Legend />
-                  <Bar dataKey="alacak" name="Alacak" fill="#10b981" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="borc" name="Borç" fill="#ef4444" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="h-full flex items-center justify-center rounded-lg border border-dashed text-sm text-slate-500">Vade verisi girildiğinde grafik burada görünecek.</div>
-            )}
+        <Card className="border-none bg-white/80 dark:bg-[#131b2e]/80 backdrop-blur-xl shadow-lg rounded-[24px] overflow-hidden">
+          <CardHeader className="border-b border-slate-100 dark:border-white/5 bg-rose-50/30 dark:bg-rose-500/5 px-6 py-5">
+            <CardTitle className="text-lg font-bold flex items-center justify-between">
+              <span className="flex items-center gap-2"><ArrowUpRight className="w-5 h-5 text-rose-500" /> Yaklaşan Ödemeler</span>
+              <Badge className="bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-400 shadow-none border-none hover:bg-rose-200">Borç</Badge>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            <Table>
+              <TableHeader className="bg-transparent">
+                <TableRow className="border-slate-100 dark:border-white/5 hover:bg-transparent">
+                  <TableHead className="pl-6 font-bold text-slate-500 uppercase text-xs tracking-wider">Tedarikçi / Gider</TableHead>
+                  <TableHead className="font-bold text-slate-500 uppercase text-xs tracking-wider">Son Ödeme</TableHead>
+                  <TableHead className="pr-6 font-bold text-slate-500 uppercase text-xs tracking-wider text-right">Tutar</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {borclar.length > 0 && borclar.map((b, i) => (
+                  <TableRow key={i} className="border-slate-100 dark:border-white/5 hover:bg-rose-50/50 dark:hover:bg-rose-500/5 transition-colors">
+                    <TableCell className="pl-6 font-bold text-slate-900 dark:text-white">{b.ad}</TableCell>
+                    <TableCell className="text-slate-500 font-medium">{b.bitis || 'Belirsiz'}</TableCell>
+                    <TableCell className="pr-6 font-black text-right text-rose-500 dark:text-rose-400">₺{fmt(b.tutar)}</TableCell>
+                  </TableRow>
+                ))}
+                <TableRow className="border-slate-100 dark:border-white/5 hover:bg-rose-50/50 dark:hover:bg-rose-500/5 transition-colors">
+                  <TableCell className="pl-6 font-bold text-slate-900 dark:text-white">Ağustos Kira (Örnek)</TableCell>
+                  <TableCell className="flex items-center gap-1.5 mt-2">
+                    <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse"></span>
+                    <span className="text-rose-600 dark:text-rose-400 font-bold text-xs">Bugün</span>
+                  </TableCell>
+                  <TableCell className="pr-6 font-black text-right text-rose-500 dark:text-rose-400">₺45.000</TableCell>
+                </TableRow>
+              </TableBody>
+            </Table>
           </CardContent>
         </Card>
       </div>
-
-      <Card className="shadow-sm">
-        <CardHeader className="border-b pb-3">
-          <CardTitle className="text-lg flex items-center gap-2">Borçlarım <Badge variant="destructive" className="ml-2">₺{fmt(topBorc)}</Badge></CardTitle>
-        </CardHeader>
-        <CardContent className="p-0">
-          <Table>
-            <TableHeader className="bg-slate-50 dark:bg-slate-900/50"><TableRow><TableHead className="pl-6">Açıklama</TableHead><TableHead>Alacaklı</TableHead><TableHead>Tutar</TableHead><TableHead>Vade</TableHead><TableHead className="pr-6">Durum</TableHead></TableRow></TableHeader>
-            <TableBody>
-              {BORCLAR.length > 0 ? BORCLAR.map(b => (
-                <TableRow key={b.aciklama}>
-                  <TableCell className="pl-6">{b.aciklama}</TableCell><TableCell>{b.alacakli}</TableCell><TableCell className="text-red-500 font-semibold">₺{fmt(b.tutar)}</TableCell><TableCell>{b.vade}</TableCell>
-                  <TableCell className="pr-6"><Badge variant="outline" className="border-amber-200 text-amber-700 bg-amber-50">{b.durum}</Badge></TableCell>
-                </TableRow>
-              )) : (
-                <TableRow><TableCell colSpan={5} className="py-8 text-center text-slate-500">Henüz borç kaydı yok.</TableCell></TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
-
-      <Card className="shadow-sm">
-        <CardHeader className="border-b pb-3 flex flex-row items-center justify-between">
-          <CardTitle className="text-lg flex items-center gap-2">Alacaklarım <Badge className="bg-emerald-100 text-emerald-800 border-none ml-2">₺{fmt(topAlacak)}</Badge></CardTitle>
-          <Select value={alacakFiltre} onValueChange={(val) => val && setAlacakFiltre(val)}>
-            <SelectTrigger className="w-[140px]"><SelectValue /></SelectTrigger>
-            <SelectContent><SelectItem value="tumu">Tümü</SelectItem><SelectItem value="Bekliyor">Bekleyen</SelectItem><SelectItem value="Gecikti">Gecikmiş</SelectItem></SelectContent>
-          </Select>
-        </CardHeader>
-        <CardContent className="p-0">
-          <Table>
-            <TableHeader className="bg-slate-50 dark:bg-slate-900/50"><TableRow><TableHead className="pl-6">Açıklama</TableHead><TableHead>Borçlu</TableHead><TableHead>Tutar</TableHead><TableHead>Vade</TableHead><TableHead className="pr-6">Durum</TableHead></TableRow></TableHeader>
-            <TableBody>
-              {filteredAlacak.length > 0 ? filteredAlacak.map(a => (
-                <TableRow key={a.aciklama + a.vade}>
-                  <TableCell className="pl-6">{a.aciklama}</TableCell><TableCell>{a.borclu}</TableCell><TableCell className="text-emerald-600 font-semibold">₺{fmt(a.tutar)}</TableCell><TableCell>{a.vade}</TableCell>
-                  <TableCell className="pr-6"><Badge variant="outline" className={a.durum === 'Gecikti' ? 'border-red-200 text-red-700 bg-red-50' : 'border-amber-200 text-amber-700 bg-amber-50'}>{a.durum === 'Gecikti' ? `${a.gecikme} gün gecikti` : a.durum}</Badge></TableCell>
-                </TableRow>
-              )) : (
-                <TableRow><TableCell colSpan={5} className="py-8 text-center text-slate-500">Henüz alacak kaydı yok.</TableCell></TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
     </div>
   );
 }

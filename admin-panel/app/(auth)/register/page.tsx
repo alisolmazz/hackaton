@@ -102,11 +102,10 @@ export default function RegisterPage() {
         {/* --- SOL BÖLÜM: Görsel & Değer Önerisi --- */}
         <div className="w-full md:w-5/12 p-10 lg:p-12 border-b md:border-b-0 md:border-r border-white/5 bg-gradient-to-br from-teal-900/10 to-transparent relative overflow-hidden flex flex-col justify-between hidden md:flex">
           <div className="relative z-10">
-            <div className="flex items-center gap-3 mb-12">
-              <div className="w-10 h-10 bg-gradient-to-br from-teal-400 to-cyan-600 text-white rounded-xl flex items-center justify-center font-bold text-xl shadow-lg shadow-teal-600/30 border border-white/10">
-                P
-              </div>
-              <span className="text-xl font-bold tracking-tight text-white">Pro Sicht</span>
+            {/* Logo */}
+            <div className="flex justify-center mb-8 relative">
+              <div className="absolute inset-0 bg-emerald-500/20 blur-[40px] rounded-full"></div>
+              <img src="/logo.png" alt="Pro Sicht Logo" className="w-24 h-24 object-contain relative z-10 drop-shadow-[0_0_15px_rgba(16,185,129,0.3)]" />
             </div>
 
             <h2 className="text-3xl lg:text-4xl font-extrabold tracking-tight text-white mb-4 leading-[1.2]">

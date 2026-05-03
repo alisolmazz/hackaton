@@ -2,7 +2,7 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
-@custom-variant dark (&:is(.dark *));
+@variant dark (&:where(.dark, .dark *));
 
 @theme inline {
   --color-background: var(--background);
@@ -154,4 +154,76 @@
 @media print {
   nav, header, aside, .no-print { display: none !important; }
   main { padding: 0 !important; margin: 0 !important; }
+}
+
+/* ─── Mobile Responsive Utilities ─── */
+
+/* Reduce extreme card rounding on small screens */
+@media (max-width: 640px) {
+  /* Card rounding: 2.5rem -> 1.25rem on mobile */
+  [class*="rounded-[2.5rem]"],
+  [class*="rounded-[32px]"],
+  [class*="rounded-[2rem]"] {
+    border-radius: 1.25rem !important;
+  }
+
+  /* Rounded headers */
+  [class*="rounded-[24px]"] {
+    border-radius: 1rem !important;
+  }
+
+  /* Page header padding reduction */
+  .space-y-8 {
+    --tw-space-y-reverse: 0;
+  }
+
+  /* Make tables scrollable */
+  table {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  /* Improve touch targets */
+  button, a, [role="button"] {
+    min-height: 36px;
+  }
+
+  /* Fix modal/dialog full-width on mobile */
+  [data-slot="dialog-content"],
+  [data-slot="alert-dialog-content"] {
+    max-width: calc(100vw - 2rem) !important;
+    border-radius: 1.25rem !important;
+  }
+}
+
+/* Small phone extra adjustments */
+@media (max-width: 380px) {
+  [class*="rounded-[2.5rem]"],
+  [class*="rounded-[32px]"],
+  [class*="rounded-[2rem]"] {
+    border-radius: 1rem !important;
+  }
+
+  /* Reduce padding on very small screens */
+  .p-6 { padding: 1rem !important; }
+  .px-6 { padding-left: 1rem !important; padding-right: 1rem !important; }
+}
+
+/* Safe area insets for notched phones */
+@supports (padding: env(safe-area-inset-bottom)) {
+  main {
+    padding-bottom: calc(1rem + env(safe-area-inset-bottom));
+  }
+}
+
+/* Smooth scroll for iOS */
+.custom-scrollbar {
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Fix horizontal overflow */
+.overflow-x-auto {
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
 }

@@ -3,7 +3,8 @@
 import React, { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Building2, Edit2, Trash2, CheckCircle2, ChevronLeft, Calendar as CalendarIcon, Phone, MapPin, Briefcase, FileText, PlusCircle, UploadCloud, Sparkles, Loader2 } from 'lucide-react';
+import { Building2, Edit2, Trash2, CheckCircle2, ChevronLeft, Calendar as CalendarIcon, Phone, MapPin, Briefcase, FileText, PlusCircle, UploadCloud, Sparkles, Loader2, Navigation } from 'lucide-react';
+import dynamic from 'next/dynamic';
 import { format } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import { toast } from 'sonner';
@@ -20,6 +21,15 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAltFirmalar, useCreateFirma, useDeleteFirma } from '@/hooks/useFirmalar';
 import FirmaForm from '@/components/firma/FirmaForm';
+
+const FirmaHarita = dynamic(() => import('@/components/shared/FirmaHarita'), {
+  ssr: false,
+  loading: () => (
+    <div className="w-full h-[280px] rounded-[2rem] bg-white/5 border border-white/10 animate-pulse flex items-center justify-center">
+      <MapPin className="w-8 h-8 text-slate-500 animate-bounce" />
+    </div>
+  ),
+});
 
 export default function FirmaDetayPage() {
   const params = useParams();
@@ -146,7 +156,7 @@ export default function FirmaDetayPage() {
           </Button>
           <div>
             <div className="flex items-center gap-3 mb-2 flex-wrap">
-              <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">{firma.unvan}</h1>
+              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-white">{firma.unvan}</h1>
               <Badge variant="outline" className={`uppercase tracking-wider font-bold ${getSozlesmeBadgeColor(firma.sozlesme_turu)}`}>
                 {firma.sozlesme_turu} Sözleşmesi
               </Badge>
@@ -292,6 +302,29 @@ export default function FirmaDetayPage() {
                           <dd className="font-medium text-slate-800 dark:text-slate-200 whitespace-pre-wrap">{firma.adres || '-'}</dd>
                         </div>
                       </dl>
+                    </CardContent>
+                  </Card>
+
+                  {/* 🗺️ Firma Konumu Haritası */}
+                  <Card className="shadow-sm border border-white/10 dark:border-white/5 bg-white/5 dark:bg-[#0d1425]/60 backdrop-blur-2xl rounded-[2.5rem] overflow-hidden">
+                    <CardHeader className="pb-3 border-b border-white/5">
+                      <CardTitle className="text-lg flex items-center gap-2">
+                        <Navigation className="w-5 h-5 text-indigo-400" />
+                        Firma Konumu
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-0">
+                      <FirmaHarita
+                        firmaAdi={firma.unvan}
+                        adres={firma.adres || 'İstanbul, Türkiye'}
+                        className="h-[300px] rounded-b-[2.5rem]"
+                      />
+                      {firma.adres && (
+                        <div className="px-6 py-4 border-t border-white/5 flex items-start gap-3">
+                          <MapPin className="w-4 h-4 text-indigo-400 mt-0.5 shrink-0" />
+                          <p className="text-sm text-slate-400 leading-relaxed">{firma.adres}</p>
+                        </div>
+                      )}
                     </CardContent>
                   </Card>
                 </div>

@@ -23,7 +23,7 @@ interface HeaderProps {
 
 export default function Header({ setMobileMenuOpen }: HeaderProps) {
   const pathname = usePathname();
-  const { theme, setTheme } = useTheme();
+  const { theme, resolvedTheme, setTheme } = useTheme();
 
   // Route'a göre dinamik başlık
   const getPageTitle = () => {
@@ -40,7 +40,7 @@ export default function Header({ setMobileMenuOpen }: HeaderProps) {
   };
 
   return (
-    <header className="sticky top-0 z-30 flex h-16 w-full items-center justify-between border-b bg-white/80 dark:bg-slate-950/80 backdrop-blur-md px-4 md:px-6 shadow-sm">
+    <header className="sticky top-0 z-30 flex h-14 sm:h-20 w-full items-center justify-between border-b border-slate-200 dark:border-white/5 bg-white/80 dark:bg-[#131b2e]/30 backdrop-blur-3xl px-3 sm:px-4 md:px-8 shadow-sm transition-colors duration-300">
       <div className="flex items-center gap-4">
         {/* Sadece Mobilde Görünür Hamburger Menü */}
         <Button 
@@ -61,7 +61,7 @@ export default function Header({ setMobileMenuOpen }: HeaderProps) {
         <Button
           variant="ghost"
           size="icon"
-          onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+          onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
           className="text-slate-600 dark:text-slate-300 rounded-full"
         >
           <Sun className="h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />

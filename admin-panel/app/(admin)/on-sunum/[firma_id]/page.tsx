@@ -20,6 +20,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
+import { generatePptx } from '@/lib/pptxGenerator';
 
 const SON_SUNUMLAR = [
   { id: 1, tarih: '2024-04-15', donem: '2024 - Q1', renk: 'Lacivert', boyut: '2.4 MB' },
@@ -106,28 +107,17 @@ export default function OnSunumPage() {
 
   const handleDownload = async () => {
     try {
-      // Gerçek senaryoda:
-      // const response = await axios.get(`/pptx/${firmaId}/indir`, { responseType: 'blob' });
-      // const url = window.URL.createObjectURL(new Blob([response.data]));
+      const toastId = toast.loading('Sunum dosyası oluşturuluyor...');
       
-      // MOCK Download
-      const toastId = toast.loading('İndiriliyor...');
-      setTimeout(() => {
-        toast.dismiss(toastId);
-        
-        // Boş bir blob yaratıp indirmiş gibi yapalım (Hackathon mockup)
-        const blob = new Blob(["mock pptx content"], { type: 'application/vnd.openxmlformats-officedocument.presentationml.presentation' });
-        const url = window.URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.setAttribute('download', `${firma?.unvan?.replace(/\s+/g, '_')}_on_sunum.pptx`);
-        document.body.appendChild(link);
-        link.click();
-        link.remove();
-        
-        toast.success('Dosya indirildi.');
-      }, 1000);
+      await generatePptx({
+        firmaAdi: firma?.unvan || 'Firma',
+        donem,
+        tema,
+        seciliSlaytlar,
+      });
 
+      toast.dismiss(toastId);
+      toast.success('Sunum başarıyla indirildi!');
     } catch (error) {
       toast.error('İndirme sırasında hata oluştu.');
     }
@@ -143,7 +133,7 @@ export default function OnSunumPage() {
     <div className="space-y-8 max-w-[1400px] mx-auto pb-12">
       
       {/* ÜST BANT */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm sticky top-16 z-20">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white/5 dark:bg-[#0d1425]/60 backdrop-blur-2xl p-5 rounded-[2.5rem] border border-white/10 dark:border-white/5 shadow-[0_20px_80px_-20px_rgba(0,0,0,0.5)] z-20">
         <div className="flex items-center gap-4">
           <Button variant="outline" size="icon" onClick={() => router.back()} className="shrink-0 h-10 w-10">
             <ChevronLeft className="h-5 w-5" />

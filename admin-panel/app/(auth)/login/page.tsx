@@ -88,19 +88,17 @@ export default function LoginPage() {
       <div className="w-full max-w-[1000px] bg-[#0d1425]/60 backdrop-blur-2xl border border-white/5 rounded-[2.5rem] shadow-[0_20px_80px_-20px_rgba(0,0,0,0.5)] overflow-hidden flex flex-col md:flex-row relative z-10">
         
         {/* --- SOL BÖLÜM: Görsel & Değer Önerisi --- */}
-        <div className="w-full md:w-5/12 p-10 lg:p-12 border-b md:border-b-0 md:border-r border-white/5 bg-gradient-to-br from-white/[0.02] to-transparent relative overflow-hidden flex flex-col justify-between">
+        <div className="w-full md:w-5/12 p-6 sm:p-10 lg:p-12 border-b md:border-b-0 md:border-r border-white/5 bg-gradient-to-br from-white/[0.02] to-transparent relative overflow-hidden flex flex-col justify-between">
           
           <div className="relative z-10">
             {/* Logo */}
-            <div className="flex items-center gap-3 mb-12">
-              <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-indigo-700 text-white rounded-xl flex items-center justify-center font-bold text-xl shadow-lg shadow-indigo-600/30 border border-white/10">
-                P
-              </div>
-              <span className="text-xl font-bold tracking-tight text-white">Pro Sicht</span>
+            <div className="flex justify-center mb-6 sm:mb-8 relative">
+              <div className="absolute inset-0 bg-blue-500/20 blur-[40px] rounded-full"></div>
+              <img src="/logo.png" alt="Pro Sicht Logo" className="w-16 h-16 sm:w-24 sm:h-24 object-contain relative z-10 drop-shadow-[0_0_15px_rgba(59,130,246,0.3)]" />
             </div>
 
             {/* Title */}
-            <h2 className="text-3xl lg:text-4xl font-extrabold tracking-tight text-white mb-4 leading-[1.2]">
+            <h2 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold tracking-tight text-white mb-3 sm:mb-4 leading-[1.2]">
               Sıfır eforla <br/><span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-cyan-400">maksimum içgörü.</span>
             </h2>
             <p className="text-slate-400 leading-relaxed mb-10 text-sm lg:text-base font-medium">
@@ -108,7 +106,7 @@ export default function LoginPage() {
             </p>
 
             {/* Özellik İkonları */}
-            <div className="space-y-6">
+            <div className="space-y-6 hidden sm:block">
               <div className="flex items-start gap-4">
                 <div className="p-2.5 rounded-xl bg-slate-900/50 shadow-sm border border-white/5 text-indigo-400">
                   <LineChart className="w-5 h-5" />
