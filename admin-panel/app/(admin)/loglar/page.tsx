@@ -1,6 +1,6 @@
 'use client';
 
-import React, { Suspense, useState, useMemo } from 'react';
+import React, { Suspense, useState, useMemo, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { 
   Activity, Search, ShieldAlert, Cpu, CheckCircle2, XCircle, 
@@ -24,20 +24,6 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsToolti
 
 import { getSystemLogs, type SystemLog } from '@/lib/api';
 
-// Seed logs to show something initially
-const SEED_LOGS: SystemLog[] = [
-  { id: 'SEED-1', zaman: new Date(Date.now() - 2 * 3600000).toISOString(), kullanici: 'admin@prosicht.com', islem_turu: 'login', tablo: 'auth', kayit_id: 'admin@prosicht.com', eski_deger: null, yeni_deger: { role: 'admin' } },
-  { id: 'SEED-2', zaman: new Date(Date.now() - 4 * 3600000).toISOString(), kullanici: 'admin@prosicht.com', islem_turu: 'create', tablo: 'firmalar', kayit_id: '1', eski_deger: null, yeni_deger: { unvan: 'Türkiye Tech A.Ş.' } },
-  { id: 'SEED-3', zaman: new Date(Date.now() - 8 * 3600000).toISOString(), kullanici: 'admin@prosicht.com', islem_turu: 'update', tablo: 'firmalar', kayit_id: '2', eski_deger: { ciro: 25000000 }, yeni_deger: { ciro: 28000000 } },
-];
-
-const AI_LOGLARI = [
-  { id: 1, zaman: new Date(Date.now() - 3600000).toISOString(), firma: 'TechNova', tur: 'ocr', sure: 1250, durum: 'basarili', promptUzunluk: 0 },
-  { id: 2, zaman: new Date(Date.now() - 7200000).toISOString(), firma: 'Global Loj.', tur: 'analiz', sure: 4500, durum: 'basarili', promptUzunluk: 2500 },
-  { id: 3, zaman: new Date(Date.now() - 86400000).toISOString(), firma: 'Apex Üretim', tur: 'pptx', sure: 8500, durum: 'hatali', promptUzunluk: 1200, hataMesaji: 'Timeout: OpenAI API yanıt vermedi.' },
-  { id: 4, zaman: new Date(Date.now() - 150000).toISOString(), firma: 'Zirve E-Ticaret', tur: 'analiz', sure: 1800, durum: 'basarili', promptUzunluk: 3100 },
-];
-
 const AI_CHART_DATA = [
   { gun: 'Pzt', cagri: 120, basari: 98 },
   { gun: 'Sal', cagri: 150, basari: 95 },
@@ -46,12 +32,6 @@ const AI_CHART_DATA = [
   { gun: 'Cum', cagri: 210, basari: 88 },
   { gun: 'Cmt', cagri: 80, basari: 100 },
   { gun: 'Paz', cagri: 60, basari: 100 },
-];
-
-const HATA_LOGLARI = [
-  { id: 1, zaman: new Date(Date.now() - 1200000).toISOString(), endpoint: '/api/finansal/123', kod: 500, tur: 'InternalServerError', kullanici: 'ayse@pro.com', cozuldu: false, stack: 'Error: Cannot read properties of undefined (reading "net_kar")\n    at calculateFinans (api.js:45:12)' },
-  { id: 2, zaman: new Date(Date.now() - 3400000).toISOString(), endpoint: '/api/admin/settings', kod: 403, tur: 'Forbidden', kullanici: 'user@pro.com', cozuldu: true, stack: 'Forbidden: Insufficient permissions.' },
-  { id: 3, zaman: new Date(Date.now() - 5600000).toISOString(), endpoint: '/api/firmalar/999', kod: 404, tur: 'NotFound', kullanici: 'ahmet@pro.com', cozuldu: false, stack: 'NotFound: Kayıt bulunamadı.' },
 ];
 
 function LoglarContent() {
@@ -71,21 +51,47 @@ function LoglarContent() {
   const [seciliHata, setSeciliHata] = useState<any>(null);
   const [hataCozulmedi, setHataCozulmedi] = useState(false);
 
-  // Gerçek logları localStorage'dan oku
-  const ISLEM_LOGLARI = useMemo(() => {
+  // Client-only: logları localStorage'dan oku (hydration mismatch önleme)
+  const [islemLoglari, setIslemLoglari] = useState<SystemLog[]>([]);
+  const [aiLoglari, setAiLoglari] = useState<{id:number;zaman:string;firma:string;tur:string;sure:number;durum:string;promptUzunluk:number;hataMesaji?:string}[]>([]);
+  const [hataLoglari, setHataLoglari] = useState<{id:number;zaman:string;endpoint:string;kod:number;tur:string;kullanici:string;cozuldu:boolean;stack:string}[]>([]);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
     const real = getSystemLogs();
-    const all = real.length > 0 ? real : SEED_LOGS;
-    return all.sort((a, b) => new Date(b.zaman).getTime() - new Date(a.zaman).getTime());
+    if (real.length > 0) {
+      setIslemLoglari(real.sort((a, b) => new Date(b.zaman).getTime() - new Date(a.zaman).getTime()));
+    } else {
+      // Seed logs üretimi client'ta
+      const seeds: SystemLog[] = [
+        { id: 'SEED-1', zaman: new Date(Date.now() - 2 * 3600000).toISOString(), kullanici: 'admin@prosicht.com', islem_turu: 'login', tablo: 'auth', kayit_id: 'admin@prosicht.com', eski_deger: null, yeni_deger: { role: 'admin' } },
+        { id: 'SEED-2', zaman: new Date(Date.now() - 4 * 3600000).toISOString(), kullanici: 'admin@prosicht.com', islem_turu: 'create', tablo: 'firmalar', kayit_id: '1', eski_deger: null, yeni_deger: { unvan: 'Türkiye Tech A.Ş.' } },
+        { id: 'SEED-3', zaman: new Date(Date.now() - 8 * 3600000).toISOString(), kullanici: 'admin@prosicht.com', islem_turu: 'update', tablo: 'firmalar', kayit_id: '2', eski_deger: { ciro: 25000000 }, yeni_deger: { ciro: 28000000 } },
+      ];
+      setIslemLoglari(seeds);
+    }
+    setAiLoglari([
+      { id: 1, zaman: new Date(Date.now() - 3600000).toISOString(), firma: 'TechNova', tur: 'ocr', sure: 1250, durum: 'basarili', promptUzunluk: 0 },
+      { id: 2, zaman: new Date(Date.now() - 7200000).toISOString(), firma: 'Global Loj.', tur: 'analiz', sure: 4500, durum: 'basarili', promptUzunluk: 2500 },
+      { id: 3, zaman: new Date(Date.now() - 86400000).toISOString(), firma: 'Apex Üretim', tur: 'pptx', sure: 8500, durum: 'hatali', promptUzunluk: 1200, hataMesaji: 'Timeout: OpenAI API yanıt vermedi.' },
+      { id: 4, zaman: new Date(Date.now() - 150000).toISOString(), firma: 'Zirve E-Ticaret', tur: 'analiz', sure: 1800, durum: 'basarili', promptUzunluk: 3100 },
+    ]);
+    setHataLoglari([
+      { id: 1, zaman: new Date(Date.now() - 1200000).toISOString(), endpoint: '/api/finansal/123', kod: 500, tur: 'InternalServerError', kullanici: 'ayse@pro.com', cozuldu: false, stack: 'Error: Cannot read properties of undefined (reading "net_kar")\n    at calculateFinans (api.js:45:12)' },
+      { id: 2, zaman: new Date(Date.now() - 3400000).toISOString(), endpoint: '/api/admin/settings', kod: 403, tur: 'Forbidden', kullanici: 'user@pro.com', cozuldu: true, stack: 'Forbidden: Insufficient permissions.' },
+      { id: 3, zaman: new Date(Date.now() - 5600000).toISOString(), endpoint: '/api/firmalar/999', kod: 404, tur: 'NotFound', kullanici: 'ahmet@pro.com', cozuldu: false, stack: 'NotFound: Kayıt bulunamadı.' },
+    ]);
+    setMounted(true);
   }, []);
 
   // Pagination Logic
   const filteredIslemLoglari = useMemo(() => {
-    return ISLEM_LOGLARI.filter(l => {
+    return islemLoglari.filter(l => {
       const matchType = filterType === 'tumu' || l.islem_turu === filterType;
       const matchArama = l.id.toLowerCase().includes(arama.toLowerCase()) || l.kullanici.toLowerCase().includes(arama.toLowerCase());
       return matchType && matchArama;
     });
-  }, [ISLEM_LOGLARI, filterType, arama]);
+  }, [islemLoglari, filterType, arama]);
 
   const paginatedLogs = filteredIslemLoglari.slice((page - 1) * perPage, page * perPage);
   const totalPages = Math.ceil(filteredIslemLoglari.length / perPage);
@@ -125,6 +131,10 @@ function LoglarContent() {
       default: return <Badge>{tur}</Badge>;
     }
   };
+
+  if (!mounted) {
+    return <div className="p-6 text-sm text-slate-500 animate-pulse">Loglar yükleniyor...</div>;
+  }
 
   return (
     <div className="space-y-8 max-w-[1400px] mx-auto pb-12">
@@ -304,7 +314,7 @@ function LoglarContent() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {AI_LOGLARI.map(l => (
+                      {aiLoglari.map(l => (
                         <TableRow key={l.id} className={l.durum === 'hatali' ? 'bg-red-50/50 dark:bg-red-900/10' : ''}>
                           <TableCell className="pl-6 text-sm">{format(new Date(l.zaman), 'HH:mm:ss')}</TableCell>
                           <TableCell className="font-medium">{l.firma}</TableCell>
@@ -379,7 +389,7 @@ function LoglarContent() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {HATA_LOGLARI.filter(h => !hataCozulmedi || !h.cozuldu).map(h => (
+                  {hataLoglari.filter(h => !hataCozulmedi || !h.cozuldu).map(h => (
                     <TableRow key={h.id} className={h.kod === 500 ? 'bg-red-50/30 dark:bg-red-900/10' : h.kod >= 400 && h.kod < 404 ? 'bg-amber-50/30 dark:bg-amber-900/10' : ''}>
                       <TableCell className="pl-6 text-sm whitespace-nowrap">{format(new Date(h.zaman), 'dd MMM, HH:mm')}</TableCell>
                       <TableCell>
