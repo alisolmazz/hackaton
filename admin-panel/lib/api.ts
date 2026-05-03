@@ -5,7 +5,7 @@ import type {
   ApiResponse, PaginatedResponse,
   Firma, FinansalRapor, Banka, Tahsilat, Proje,
   PremiumTalep, PremiumErisim, PremiumPaket, TalepDurum, UzmanAnalizTalebi,
-  IslemLog, AICagriLog, OcrSonucu,
+  IslemLog, AICagriLog, OcrSonucu, Yatirim
 } from '@/types';
 import type { FirmaFilters, TalepFilters, LogFilters } from './query-keys';
 
@@ -99,6 +99,7 @@ const AI_ANALIZ_KEY = 'mock_ai_finansal_analizler';
 const OCR_FINANSAL_TASLAK_KEY = 'mock_ocr_finansal_taslaklar';
 const MOCK_FIRMALAR_KEY = 'mock_firmalar';
 const SYSTEM_LOGS_KEY = 'mock_system_logs';
+const MOCK_YATIRIMLAR_KEY = 'mock_yatirimlar';
 
 export interface SystemLog {
   id: string;
@@ -125,6 +126,14 @@ export const addSystemLog = (log: Omit<SystemLog, 'id' | 'zaman'>): void => {
 
 export const getSystemLogs = (): SystemLog[] => {
   return readLocalJson<SystemLog[]>(SYSTEM_LOGS_KEY, []);
+};
+
+export const getLocalYatirimlar = (): Yatirim[] => {
+  return readLocalJson<Yatirim[]>(MOCK_YATIRIMLAR_KEY, []);
+};
+
+export const writeLocalYatirimlar = (yatirimlar: Yatirim[]) => {
+  writeLocalJson(MOCK_YATIRIMLAR_KEY, yatirimlar);
 };
 
 const getLocalFirmalar = (): Firma[] => {
@@ -431,6 +440,52 @@ export const deleteFirma = async (id: string): Promise<ApiResponse<void>> => {
 
 export const ocrFirma = async (firmaId: string | undefined, file: File): Promise<ApiResponse<OcrSonucu>> => {
   return postGeminiFirmaOcr(file);
+};
+
+// ──────────────────────────────────────────────
+// YATIRIMLAR
+// ──────────────────────────────────────────────
+
+export const getYatirimlar = async (firmaId: string): Promise<PaginatedResponse<Yatirim>> => {
+  const all = getLocalYatirimlar().filter(y => y.firma_id === firmaId);
+  return tryOrMock(
+    async () => { const { data } = await apiClient.get<PaginatedResponse<Yatirim>>(`/firma/${firmaId}/yatirimlar`); return data; },
+    { data: all, total: all.length, page: 1, per_page: 100 }
+  );
+};
+
+export const createYatirim = async (firmaId: string, payload: Partial<Yatirim>): Promise<ApiResponse<Yatirim>> => {
+  const newYatirim: Yatirim = {
+    ...payload,
+    id: `yatirim-${Date.now()}`,
+    firma_id: firmaId,
+    created_at: new Date().toISOString()
+  } as Yatirim;
+  
+  const yatirimlar = getLocalYatirimlar();
+  writeLocalYatirimlar([newYatirim, ...yatirimlar]);
+  addSystemLog({ kullanici: getLoggedInEmail() || 'admin', islem_turu: 'create', tablo: 'yatirimlar', kayit_id: newYatirim.id, eski_deger: null, yeni_deger: newYatirim as any });
+  
+  return tryOrMock(
+    async () => { const { data } = await apiClient.post<ApiResponse<Yatirim>>(`/firma/${firmaId}/yatirimlar`, payload); return data; },
+    { data: newYatirim, message: 'Yatırım eklendi' }
+  );
+};
+
+export const deleteYatirim = async (id: string): Promise<ApiResponse<null>> => {
+  const yatirimlar = getLocalYatirimlar();
+  const index = yatirimlar.findIndex(y => y.id === id);
+  if (index !== -1) {
+    const deleted = yatirimlar[index];
+    yatirimlar.splice(index, 1);
+    writeLocalYatirimlar(yatirimlar);
+    addSystemLog({ kullanici: getLoggedInEmail() || 'admin', islem_turu: 'delete', tablo: 'yatirimlar', kayit_id: id, eski_deger: deleted as any, yeni_deger: null });
+  }
+
+  return tryOrMock(
+    async () => { const { data } = await apiClient.delete<ApiResponse<null>>(`/yatirimlar/${id}`); return data; },
+    { data: null, message: 'Yatırım silindi' }
+  );
 };
 
 // ──────────────────────────────────────────────

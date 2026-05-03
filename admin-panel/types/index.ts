@@ -144,6 +144,19 @@ export interface AICagriLog {
   created_at: string;
 }
 
+export interface Yatirim {
+  id: string;
+  firma_id: string;
+  ad: string;
+  tur: string;
+  alis: number;
+  guncel: number;
+  risk: string;
+  tarih: string;
+  notlar?: string;
+  created_at: string;
+}
+
 export interface OcrSonucu {
   unvan: string;
   vergi_no: string;

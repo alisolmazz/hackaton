@@ -9,11 +9,13 @@ import * as z from 'zod';
 import { getFirma } from '@/lib/api';
 import { 
   Briefcase, TrendingUp, TrendingDown, Target, AlertTriangle, ArrowRight,
-  ChevronLeft, Plus, RefreshCw, Info, Calendar, PlusCircle, CheckCircle2, ChevronUp, ChevronDown, Clock
+  ChevronLeft, Plus, RefreshCw, Info, Calendar, PlusCircle, CheckCircle2, ChevronUp, ChevronDown, Clock, Trash2, Loader2
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import { toast } from 'sonner';
+import { useYatirimlar, useCreateYatirim, useDeleteYatirim } from '@/hooks/useYatirim';
+import { Yatirim } from '@/types';
 import { 
   PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip,
   LineChart, Line, Legend, Area, AreaChart
@@ -32,13 +34,6 @@ import { Textarea } from '@/components/ui/textarea';
 
 // MOCK DATA
 const PIE_COLORS = ['#3b82f6', '#8b5cf6', '#10b981', '#f59e0b', '#64748b'];
-
-const AKTIF_YATIRIMLAR = [
-  { id: 1, ad: 'BIST 100 Hisse Fonu', tur: 'Fon', alis: 500000, guncel: 625000, getiri: 25, risk: 'Orta', tarih: '2023-05-10', spark: [5, 8, 7, 12, 10, 15, 25] },
-  { id: 2, ad: 'Eurobond Portföyü', tur: 'Tahvil', alis: 1200000, guncel: 1350000, getiri: 12.5, risk: 'Düşük', tarih: '2022-11-20', spark: [2, 4, 6, 8, 10, 11, 12.5] },
-  { id: 3, ad: 'Ar-Ge Teknoloji Girişimi', tur: 'Girişim', alis: 250000, guncel: 200000, getiri: -20, risk: 'Yüksek', tarih: '2024-01-15', spark: [0, -5, -2, -10, -15, -12, -20] },
-  { id: 4, ad: 'Gayrimenkul Yatırım Fonu', tur: 'GYF', alis: 800000, guncel: 1100000, getiri: 37.5, risk: 'Düşük', tarih: '2021-08-05', spark: [10, 15, 22, 28, 30, 35, 37.5] },
-];
 
 const SEKTOR_DAGILIM = [
   { name: 'Finans', value: 45 },
@@ -98,6 +93,12 @@ export default function YatirimPortfoyuPage() {
   });
   const firma = firmaResponse?.data;
 
+  const { data: yatirimlarResponse, isLoading: isYatirimlarLoading } = useYatirimlar(firmaId);
+  const aktifYatirimlar: Yatirim[] = yatirimlarResponse || [];
+  
+  const createYatirimMutation = useCreateYatirim();
+  const deleteYatirimMutation = useDeleteYatirim();
+
   const form = useForm<YatirimFormValues>({
     resolver: zodResolver(yatirimSchema) as any,
     defaultValues: {
@@ -114,14 +115,22 @@ export default function YatirimPortfoyuPage() {
   };
 
   const onSubmit = (data: YatirimFormValues) => {
-    toast.success(`${data.ad} portföye eklendi!`);
-    setModalOpen(false);
-    form.reset();
+    createYatirimMutation.mutate({
+      firmaId,
+      payload: {
+        ad: data.ad, tur: data.tur, tarih: data.tarih, alis: data.alis, guncel: data.guncel, risk: data.risk, notlar: data.notlar
+      }
+    }, {
+      onSuccess: () => {
+        setModalOpen(false);
+        form.reset();
+      }
+    });
   };
 
-  const toplamDeger = AKTIF_YATIRIMLAR.reduce((acc, curr) => acc + curr.guncel, 0);
-  const toplamAlis = AKTIF_YATIRIMLAR.reduce((acc, curr) => acc + curr.alis, 0);
-  const genelGetiriYuzde = ((toplamDeger - toplamAlis) / toplamAlis) * 100;
+  const toplamDeger = aktifYatirimlar.reduce((acc, curr) => acc + curr.guncel, 0);
+  const toplamAlis = aktifYatirimlar.reduce((acc, curr) => acc + curr.alis, 0);
+  const genelGetiriYuzde = toplamAlis > 0 ? ((toplamDeger - toplamAlis) / toplamAlis) * 100 : 0;
   const genelGetiriTutar = toplamDeger - toplamAlis;
   const riskSkoru = 62; // 0-100 gauge data
 
@@ -171,7 +180,7 @@ export default function YatirimPortfoyuPage() {
           <div className="absolute top-0 right-0 p-4 opacity-20 group-hover:scale-110 transition-transform"><Target className="w-24 h-24 -mt-6 -mr-6" /></div>
           <CardContent className="p-6 relative z-10">
             <p className="text-blue-100 font-medium mb-1 drop-shadow-sm">Aktif Yatırım Sayısı</p>
-            <p className="text-3xl font-black tracking-tight drop-shadow-md">{AKTIF_YATIRIMLAR.length}</p>
+            <p className="text-3xl font-black tracking-tight drop-shadow-md">{aktifYatirimlar.length}</p>
             <p className="text-sm text-blue-100 mt-3 flex items-center">Farklı varlık sınıfında</p>
           </CardContent>
         </Card>
@@ -279,7 +288,10 @@ export default function YatirimPortfoyuPage() {
                       )} />
                       <DialogFooter className="pt-4 border-t">
                         <Button type="button" variant="outline" onClick={() => setModalOpen(false)}>İptal</Button>
-                        <Button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white">Kaydet</Button>
+                        <Button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white" disabled={createYatirimMutation.isPending}>
+                          {createYatirimMutation.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+                          Kaydet
+                        </Button>
                       </DialogFooter>
                     </form>
                   </Form>
@@ -299,40 +311,60 @@ export default function YatirimPortfoyuPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {AKTIF_YATIRIMLAR.map(item => (
-                    <TableRow key={item.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30">
-                      <TableCell className="pl-6">
-                        <p className="font-bold text-slate-900 dark:text-slate-100">{item.ad}</p>
-                        <p className="text-xs text-slate-500">{item.tur} • {format(new Date(item.tarih), 'MMM yyyy', {locale: tr})}</p>
-                      </TableCell>
-                      <TableCell className="font-medium">₺{item.alis.toLocaleString('tr-TR')}</TableCell>
-                      <TableCell className="font-bold text-slate-900 dark:text-slate-100">₺{item.guncel.toLocaleString('tr-TR')}</TableCell>
-                      <TableCell>
-                        <div className={`flex items-center font-bold ${item.getiri >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-                          {item.getiri >= 0 ? <ChevronUp className="w-4 h-4 mr-0.5"/> : <ChevronDown className="w-4 h-4 mr-0.5"/>}
-                          {Math.abs(item.getiri)}%
-                        </div>
-                      </TableCell>
-                      <TableCell className="w-24">
-                        <div className="h-8 w-20">
-                          <ResponsiveContainer width="100%" height="100%">
-                            <LineChart data={item.spark.map((val, i) => ({ val, i }))}>
-                              <Line type="monotone" dataKey="val" stroke={item.getiri >= 0 ? '#10b981' : '#ef4444'} strokeWidth={2} dot={false} isAnimationActive={false} />
-                            </LineChart>
-                          </ResponsiveContainer>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-right pr-6">
-                        <Badge variant="outline" className={`
-                          ${item.risk === 'Düşük' ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:border-emerald-800' : ''}
-                          ${item.risk === 'Orta' ? 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:border-amber-800' : ''}
-                          ${item.risk === 'Yüksek' ? 'bg-red-50 text-red-700 border-red-200 dark:bg-red-900/30 dark:border-red-800' : ''}
-                        `}>
-                          {item.risk}
-                        </Badge>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                  {isYatirimlarLoading ? (
+                    <TableRow><TableCell colSpan={6} className="text-center py-8 text-slate-500"><Loader2 className="w-6 h-6 animate-spin mx-auto mb-2"/>Yatırımlar yükleniyor...</TableCell></TableRow>
+                  ) : aktifYatirimlar.length === 0 ? (
+                    <TableRow><TableCell colSpan={6} className="text-center py-8 text-slate-500">Henüz yatırım kaydı bulunmuyor.</TableCell></TableRow>
+                  ) : (
+                    aktifYatirimlar.map(item => {
+                      const getiri = item.alis > 0 ? ((item.guncel - item.alis) / item.alis) * 100 : 0;
+                      const riskTitle = item.risk.charAt(0).toUpperCase() + item.risk.slice(1);
+                      const sparkData = [item.alis, item.alis + ((item.guncel-item.alis)*0.3), item.alis + ((item.guncel-item.alis)*0.6), item.guncel];
+                      return (
+                      <TableRow key={item.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 group">
+                        <TableCell className="pl-6 relative">
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            onClick={() => deleteYatirimMutation.mutate({ firmaId, yatirimId: item.id })}
+                            className="absolute -left-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-600 transition-opacity h-6 w-6"
+                            title="Yatırımı Sil"
+                            disabled={deleteYatirimMutation.isPending}
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
+                          <p className="font-bold text-slate-900 dark:text-slate-100">{item.ad}</p>
+                          <p className="text-xs text-slate-500 capitalize">{item.tur} • {item.tarih ? format(new Date(item.tarih), 'MMM yyyy', {locale: tr}) : ''}</p>
+                        </TableCell>
+                        <TableCell className="font-medium">₺{item.alis.toLocaleString('tr-TR')}</TableCell>
+                        <TableCell className="font-bold text-slate-900 dark:text-slate-100">₺{item.guncel.toLocaleString('tr-TR')}</TableCell>
+                        <TableCell>
+                          <div className={`flex items-center font-bold ${getiri >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                            {getiri >= 0 ? <ChevronUp className="w-4 h-4 mr-0.5"/> : <ChevronDown className="w-4 h-4 mr-0.5"/>}
+                            {Math.abs(getiri).toFixed(2)}%
+                          </div>
+                        </TableCell>
+                        <TableCell className="w-24">
+                          <div className="h-8 w-20">
+                            <ResponsiveContainer width="100%" height="100%">
+                              <LineChart data={sparkData.map((val, i) => ({ val, i }))}>
+                                <Line type="monotone" dataKey="val" stroke={getiri >= 0 ? '#10b981' : '#ef4444'} strokeWidth={2} dot={false} isAnimationActive={false} />
+                              </LineChart>
+                            </ResponsiveContainer>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-right pr-6">
+                          <Badge variant="outline" className={`
+                            ${item.risk === 'dusuk' ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:border-emerald-800' : ''}
+                            ${item.risk === 'orta' ? 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:border-amber-800' : ''}
+                            ${item.risk === 'yuksek' ? 'bg-red-50 text-red-700 border-red-200 dark:bg-red-900/30 dark:border-red-800' : ''}
+                          `}>
+                            {riskTitle}
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    )})
+                  )}
                 </TableBody>
               </Table>
             </CardContent>
