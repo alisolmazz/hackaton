@@ -31,9 +31,23 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 // NAKİT AKIŞI MOCK DATA (Chart için görsel)
 const AYLAR = ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara'];
 
+const NAKIT_AKIS_MOCK_BASES = [
+  { giris: 450000, cikis: 280000 },
+  { giris: 520000, cikis: 310000 },
+  { giris: 380000, cikis: 250000 },
+  { giris: 610000, cikis: 420000 },
+  { giris: 490000, cikis: 340000 },
+  { giris: 580000, cikis: 390000 },
+  { giris: 470000, cikis: 290000 },
+  { giris: 630000, cikis: 480000 },
+  { giris: 510000, cikis: 350000 },
+  { giris: 550000, cikis: 380000 },
+  { giris: 590000, cikis: 410000 },
+  { giris: 680000, cikis: 450000 }
+];
+
 const NAKIT_AKIS_DATA = AYLAR.map((ay, i) => {
-  const giris = Math.floor(Math.random() * 500000) + 200000;
-  const cikis = Math.floor(Math.random() * 400000) + 150000;
+  const { giris, cikis } = NAKIT_AKIS_MOCK_BASES[i];
   return { ay, giris, cikis, net: giris - cikis, kumulatif: 0 };
 });
 let kumulatif = 0;

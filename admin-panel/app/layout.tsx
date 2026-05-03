@@ -36,6 +36,7 @@ export default function RootLayout({
           attribute="class"
           defaultTheme="light"
           forcedTheme="light"
+          disableTransitionOnChange
         >
           <QueryProvider>
             {children}
