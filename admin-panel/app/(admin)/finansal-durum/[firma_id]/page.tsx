@@ -12,6 +12,9 @@ import {
 import { format, differenceInDays } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import { toast } from 'sonner';
+import * as XLSX from 'xlsx';
+import { useBankalar, useTahsilatlar, useProjeler, useCreateTahsilat } from '@/hooks/useFinans';
+import { Banka, Tahsilat, Proje } from '@/types';
 import { 
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend, BarChart, Bar
@@ -25,7 +28,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 
-// MOCK DATA
+// NAKİT AKIŞI MOCK DATA (Chart için görsel)
 const AYLAR = ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara'];
 
 const NAKIT_AKIS_DATA = AYLAR.map((ay, i) => {
@@ -37,29 +40,6 @@ let kumulatif = 0;
 NAKIT_AKIS_DATA.forEach(d => { kumulatif += d.net; d.kumulatif = kumulatif; });
 
 const PIE_COLORS = ['#ef4444', '#10b981'];
-
-const BANKALAR = [
-  { id: 1, ad: 'Garanti BBVA', hesap: 'TR98 0006 2000 0001 2345 6789', bakiye: 1250000, limit: 5000000, kullanim: 250000 },
-  { id: 2, ad: 'Yapı Kredi', hesap: 'TR12 0006 7000 0001 2345 6789', bakiye: 450000, limit: 2000000, kullanim: 1500000 },
-  { id: 3, ad: 'İş Bankası', hesap: 'TR45 0006 4000 0001 2345 6789', bakiye: 80000, limit: 1000000, kullanim: 900000 },
-];
-
-const BEKLEYEN_TAHSILATLAR = [
-  { id: 1, aciklama: 'ERP Geçiş Danışmanlık Taksidi', tutar: 125000, vade: '2024-05-01' },
-  { id: 2, aciklama: 'Yıllık Bakım Anlaşması 1. Taksit', tutar: 45000, vade: '2024-05-15' },
-  { id: 3, aciklama: 'Sunucu Taşıma Bedeli', tutar: 85000, vade: '2024-04-10' }, // Gecikmiş
-];
-
-const YAPILAN_TAHSILATLAR = [
-  { id: 4, aciklama: 'Mart Ayı Danışmanlık', tutar: 120000, tarih: '2024-03-25' },
-  { id: 5, aciklama: 'Şubat Ayı Danışmanlık', tutar: 120000, tarih: '2024-02-24' },
-];
-
-const PROJELER = [
-  { id: 1, ad: 'Web Sitesi Yenileme', baslangic: '2024-01-01', bitis: '2024-06-30', tutar: 150000, durum: 'devam', ilerleme: 65 },
-  { id: 2, ad: 'Mobil Uygulama', baslangic: '2024-03-01', bitis: '2024-09-30', tutar: 450000, durum: 'devam', ilerleme: 20 },
-  { id: 3, ad: 'E-Ticaret Altyapısı', baslangic: '2023-09-01', bitis: '2023-12-31', tutar: 350000, durum: 'bitti', ilerleme: 100 },
-];
 
 export default function FinansalDurumPage() {
   const params = useParams();
@@ -73,28 +53,66 @@ export default function FinansalDurumPage() {
   });
   const firma = firmaResponse?.data;
 
+  const { data: bankalarResp } = useBankalar(firmaId);
+  const { data: tahsilatlarResp } = useTahsilatlar(firmaId);
+  const { data: projelerResp } = useProjeler(firmaId);
+  const createTahsilatMutation = useCreateTahsilat();
+
+  const bankalar: Banka[] = bankalarResp || [];
+  const tahsilatlar: Tahsilat[] = tahsilatlarResp || [];
+  const projeler: Proje[] = projelerResp || [];
+
+  const bekleyenTahsilatlar = tahsilatlar.filter(t => t.durum === 'bekliyor');
+  const yapilanTahsilatlar = tahsilatlar.filter(t => t.durum === 'odendi');
+
   // Hesaplamalar
-  const toplamBekleyen = BEKLEYEN_TAHSILATLAR.reduce((acc, curr) => acc + curr.tutar, 0);
-  const toplamYapilan = YAPILAN_TAHSILATLAR.reduce((acc, curr) => acc + curr.tutar, 0);
-  const toplamBorc = 15500000; // Mock
-  const netNakit = BANKALAR.reduce((acc, curr) => acc + curr.bakiye, 0) + toplamBekleyen - toplamBorc;
+  const toplamBekleyen = bekleyenTahsilatlar.reduce((acc, curr) => acc + curr.tutar, 0);
+  const toplamYapilan = yapilanTahsilatlar.reduce((acc, curr) => acc + curr.tutar, 0);
+  const toplamBorc = bankalar.reduce((acc, curr) => acc + (curr.kredi_kullanim || 0), 0) || 15500000; // Eğer boşsa dummy 15M görünsün demo için
+  const netNakit = bankalar.reduce((acc, curr) => acc + curr.bakiye, 0) + toplamBekleyen - toplamBorc;
 
   const handlePrint = () => {
+    // Print öncesi ufak bir stil eklentisi yaparak yan menüleri gizleyeceğiz, @media print zaten globalde çözülür ancak tailwind için classlar ekledik.
     window.print();
   };
 
   const handleOcr = () => {
     const id = toast.loading('Banka dekontları veya ekstreleri analiz ediliyor...');
     setTimeout(() => {
+      // Mock bir OCR sonucu gelmiş gibi direkt veritabanına bir tahsilat ekleyelim
+      createTahsilatMutation.mutate({
+        firmaId,
+        payload: {
+          aciklama: 'Yapay Zeka OCR - Danışmanlık Tahsilatı',
+          tutar: Math.floor(Math.random() * 200000) + 50000,
+          durum: 'odendi',
+          tarih: new Date().toISOString()
+        }
+      });
       toast.success('Finansal durum belgeden güncellendi!', { id });
     }, 2000);
+  };
+
+  const handleExportExcel = () => {
+    const wb = XLSX.utils.book_new();
+    
+    const wsBankalar = XLSX.utils.json_to_sheet(bankalar.map(b => ({ Banka: b.banka_adi, Hesap: b.hesap_no, Bakiye: b.bakiye, 'Kredi Kullanım': b.kredi_kullanim, 'Limit': b.kredi_limiti })));
+    XLSX.utils.book_append_sheet(wb, wsBankalar, "Bankalar");
+
+    const wsTahsilatlar = XLSX.utils.json_to_sheet(tahsilatlar.map(t => ({ Aciklama: t.aciklama, Tutar: t.tutar, Durum: t.durum, 'Tarih/Vade': t.odeme_tarihi || t.vade_tarihi })));
+    XLSX.utils.book_append_sheet(wb, wsTahsilatlar, "Tahsilatlar");
+
+    const wsProjeler = XLSX.utils.json_to_sheet(projeler.map(p => ({ Proje: p.proje_adi, Tutar: p.tutar, Durum: p.durum, İlerleme: '%0' })));
+    XLSX.utils.book_append_sheet(wb, wsProjeler, "Projeler");
+
+    XLSX.writeFile(wb, `${firma?.unvan || 'Firma'}_Finansal_Durum.xlsx`);
   };
 
   return (
     <div className="space-y-8 max-w-[1400px] mx-auto pb-12">
       
       {/* HEADER & TOP BAR */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm sticky top-16 z-20">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm sticky top-16 z-20 print:hidden">
         <div className="flex items-center gap-4">
           <Button variant="outline" size="icon" onClick={() => router.back()} className="shrink-0">
             <ChevronLeft className="h-5 w-5" />
@@ -197,8 +215,9 @@ export default function FinansalDurumPage() {
           </CardHeader>
           <CardContent className="pt-4 flex-1">
             <Accordion className="w-full">
-              {BEKLEYEN_TAHSILATLAR.map((item) => {
-                const diff = differenceInDays(new Date(), new Date(item.vade));
+              {bekleyenTahsilatlar.length === 0 && <div className="p-4 text-center text-slate-500">Bekleyen tahsilat bulunmuyor.</div>}
+              {bekleyenTahsilatlar.map((item) => {
+                const diff = differenceInDays(new Date(), new Date(item.vade_tarihi || new Date()));
                 const isLate = diff > 0;
                 return (
                   <AccordionItem value={`item-${item.id}`} key={item.id} className="border-slate-100 dark:border-slate-800">
@@ -221,14 +240,14 @@ export default function FinansalDurumPage() {
                     <AccordionContent className="px-4 pb-4 pt-2 bg-slate-50/50 dark:bg-slate-900/50 rounded-b-lg border border-t-0 border-slate-100 dark:border-slate-800">
                       <div className="flex items-center justify-between text-sm">
                         <div className="space-y-1 text-slate-500">
-                          <p>Vade Tarihi: <strong className="text-slate-900 dark:text-slate-200">{format(new Date(item.vade), 'dd MMMM yyyy', { locale: tr })}</strong></p>
+                          <p>Vade Tarihi: <strong className="text-slate-900 dark:text-slate-200">{item.vade_tarihi ? format(new Date(item.vade_tarihi), 'dd MMMM yyyy', { locale: tr }) : '-'}</strong></p>
                           {isLate ? (
                             <p className="text-red-600 font-medium flex items-center gap-1"><AlertCircle className="w-3 h-3"/> {diff} gün geçti</p>
                           ) : (
                             <p className="text-amber-600 font-medium">{-diff} gün kaldı</p>
                           )}
                         </div>
-                        <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm">
+                        <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm print:hidden">
                           <CheckCircle2 className="w-4 h-4 mr-2" /> Ödendi İşaretle
                         </Button>
                       </div>
@@ -259,10 +278,13 @@ export default function FinansalDurumPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {YAPILAN_TAHSILATLAR.map((item) => (
+                {yapilanTahsilatlar.length === 0 && (
+                  <TableRow><TableCell colSpan={3} className="text-center py-4 text-slate-500">Henüz tamamlanan tahsilat yok.</TableCell></TableRow>
+                )}
+                {yapilanTahsilatlar.map((item) => (
                   <TableRow key={item.id}>
                     <TableCell className="pl-6 font-medium">{item.aciklama}</TableCell>
-                    <TableCell className="text-slate-500">{format(new Date(item.tarih), 'dd MMM yyyy', { locale: tr })}</TableCell>
+                    <TableCell className="text-slate-500">{item.odeme_tarihi ? format(new Date(item.odeme_tarihi), 'dd MMM yyyy', { locale: tr }) : '-'}</TableCell>
                     <TableCell className="text-right pr-6 font-bold text-emerald-600">₺{item.tutar.toLocaleString('tr-TR')}</TableCell>
                   </TableRow>
                 ))}
@@ -398,21 +420,22 @@ export default function FinansalDurumPage() {
             <Button size="sm" variant="ghost" className="text-blue-600"><Plus className="w-4 h-4 mr-1"/> Ekle</Button>
           </CardHeader>
           <CardContent className="pt-4 flex-1 overflow-y-auto max-h-[300px] space-y-4 custom-scrollbar">
-            {BANKALAR.map(b => {
-              const oran = (b.kullanim / b.limit) * 100;
+            {bankalar.length === 0 && <div className="text-center text-slate-500 py-4">Banka kaydı bulunamadı.</div>}
+            {bankalar.map(b => {
+              const oran = ((b.kredi_kullanim || 0) / (b.kredi_limiti || 1)) * 100;
               return (
-                <div key={b.id} className="p-4 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/30 hover:border-blue-200 transition-colors">
+                <div key={b.id} className="p-4 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/30 hover:border-blue-200 transition-colors break-inside-avoid">
                   <div className="flex justify-between items-start mb-2">
-                    <h5 className="font-bold">{b.ad}</h5>
-                    <span className="text-xs font-mono bg-white dark:bg-slate-800 px-2 py-1 rounded shadow-sm border border-slate-100 dark:border-slate-700">{b.hesap}</span>
+                    <h5 className="font-bold">{b.banka_adi}</h5>
+                    <span className="text-xs font-mono bg-white dark:bg-slate-800 px-2 py-1 rounded shadow-sm border border-slate-100 dark:border-slate-700">{b.hesap_no}</span>
                   </div>
                   <div className="text-2xl font-black text-green-600 dark:text-green-500 mb-3">
-                    ₺{b.bakiye.toLocaleString('tr-TR')}
+                    ₺{(b.bakiye || 0).toLocaleString('tr-TR')}
                   </div>
                   <div className="space-y-1.5">
                     <div className="flex justify-between text-xs text-slate-500 font-medium">
-                      <span>Kredi: ₺{b.kullanim.toLocaleString('tr-TR')}</span>
-                      <span>Limit: ₺{b.limit.toLocaleString('tr-TR')}</span>
+                      <span>Kredi: ₺{(b.kredi_kullanim || 0).toLocaleString('tr-TR')}</span>
+                      <span>Limit: ₺{(b.kredi_limiti || 0).toLocaleString('tr-TR')}</span>
                     </div>
                     <Progress value={oran} className="h-1.5" />
                   </div>
@@ -439,17 +462,18 @@ export default function FinansalDurumPage() {
                 <h4 className="font-semibold text-blue-800 dark:text-blue-400 flex items-center gap-2">
                   <CircleDashed className="w-4 h-4 animate-spin-slow" /> Devam Eden İşler
                 </h4>
-                {PROJELER.filter(p => p.durum === 'devam').map(p => (
-                  <div key={p.id} className="p-4 rounded-xl border border-l-4 border-l-blue-500 border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
-                    <h5 className="font-bold mb-1">{p.ad}</h5>
+                {projeler.filter(p => p.durum === 'devam').length === 0 && <p className="text-sm text-slate-500">Devam eden iş yok.</p>}
+                {projeler.filter(p => p.durum === 'devam').map(p => (
+                  <div key={p.id} className="p-4 rounded-xl border border-l-4 border-l-blue-500 border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm break-inside-avoid">
+                    <h5 className="font-bold mb-1">{p.proje_adi}</h5>
                     <div className="text-sm text-slate-500 mb-3">
-                      {format(new Date(p.baslangic), 'MMM yyyy', { locale: tr })} - {format(new Date(p.bitis), 'MMM yyyy', { locale: tr })}
+                      {p.baslangic ? format(new Date(p.baslangic), 'MMM yyyy', { locale: tr }) : ''} {p.bitis ? `- ${format(new Date(p.bitis), 'MMM yyyy', { locale: tr })}` : ''}
                     </div>
                     <div className="flex justify-between items-center mb-1.5">
                       <span className="font-bold text-slate-900 dark:text-white">₺{p.tutar.toLocaleString('tr-TR')}</span>
-                      <span className="text-xs font-bold text-blue-600 dark:text-blue-400">%{p.ilerleme}</span>
+                      <span className="text-xs font-bold text-blue-600 dark:text-blue-400">%0</span>
                     </div>
-                    <Progress value={p.ilerleme} className="h-1.5 bg-blue-100" />
+                    <Progress value={0} className="h-1.5 bg-blue-100" />
                   </div>
                 ))}
               </div>
@@ -459,11 +483,12 @@ export default function FinansalDurumPage() {
                 <h4 className="font-semibold text-emerald-800 dark:text-emerald-400 flex items-center gap-2">
                   <CheckCircle2 className="w-4 h-4" /> Tamamlanan İşler
                 </h4>
-                {PROJELER.filter(p => p.durum === 'bitti').map(p => (
-                  <div key={p.id} className="p-4 rounded-xl border border-l-4 border-l-emerald-500 border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm opacity-80 hover:opacity-100 transition-opacity">
-                    <h5 className="font-bold mb-1 line-through decoration-emerald-500/30">{p.ad}</h5>
+                {projeler.filter(p => p.durum === 'bitti').length === 0 && <p className="text-sm text-slate-500">Tamamlanan iş yok.</p>}
+                {projeler.filter(p => p.durum === 'bitti').map(p => (
+                  <div key={p.id} className="p-4 rounded-xl border border-l-4 border-l-emerald-500 border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm opacity-80 hover:opacity-100 transition-opacity break-inside-avoid">
+                    <h5 className="font-bold mb-1 line-through decoration-emerald-500/30">{p.proje_adi}</h5>
                     <div className="text-sm text-slate-500 mb-3">
-                      Bitiş: {format(new Date(p.bitis), 'dd MMMM yyyy', { locale: tr })}
+                      Bitiş: {p.bitis ? format(new Date(p.bitis), 'dd MMMM yyyy', { locale: tr }) : '-'}
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="font-bold text-slate-900 dark:text-white">₺{p.tutar.toLocaleString('tr-TR')}</span>
@@ -523,11 +548,11 @@ export default function FinansalDurumPage() {
       </div>
 
       {/* SAYFA ALT BUTONLARI */}
-      <div className="flex flex-wrap items-center justify-end gap-4 pt-6 border-t border-slate-200 dark:border-slate-800">
+      <div className="flex flex-wrap items-center justify-end gap-4 pt-6 border-t border-slate-200 dark:border-slate-800 print:hidden">
         <Button variant="outline" onClick={handleOcr} className="border-blue-200 text-blue-700 hover:bg-blue-50 dark:border-blue-800 dark:text-blue-400 dark:hover:bg-blue-900/30">
           <UploadCloud className="w-4 h-4 mr-2" /> Belgeden Güncelle
         </Button>
-        <Button variant="outline" className="border-emerald-200 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-800 dark:text-emerald-400 dark:hover:bg-emerald-900/30">
+        <Button variant="outline" onClick={handleExportExcel} className="border-emerald-200 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-800 dark:text-emerald-400 dark:hover:bg-emerald-900/30">
           <FileSpreadsheet className="w-4 h-4 mr-2" /> Excel'e Aktar
         </Button>
         <Button onClick={handlePrint} className="bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200 shadow-md">

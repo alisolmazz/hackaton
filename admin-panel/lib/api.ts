@@ -100,6 +100,9 @@ const OCR_FINANSAL_TASLAK_KEY = 'mock_ocr_finansal_taslaklar';
 const MOCK_FIRMALAR_KEY = 'mock_firmalar';
 const SYSTEM_LOGS_KEY = 'mock_system_logs';
 const MOCK_YATIRIMLAR_KEY = 'mock_yatirimlar';
+const MOCK_BANKALAR_KEY = 'mock_bankalar';
+const MOCK_TAHSILATLAR_KEY = 'mock_tahsilatlar';
+const MOCK_PROJELER_KEY = 'mock_projeler';
 
 export interface SystemLog {
   id: string;
@@ -135,6 +138,15 @@ export const getLocalYatirimlar = (): Yatirim[] => {
 export const writeLocalYatirimlar = (yatirimlar: Yatirim[]) => {
   writeLocalJson(MOCK_YATIRIMLAR_KEY, yatirimlar);
 };
+
+export const getLocalBankalar = (): Banka[] => readLocalJson<Banka[]>(MOCK_BANKALAR_KEY, []);
+export const writeLocalBankalar = (data: Banka[]) => writeLocalJson(MOCK_BANKALAR_KEY, data);
+
+export const getLocalTahsilatlar = (): Tahsilat[] => readLocalJson<Tahsilat[]>(MOCK_TAHSILATLAR_KEY, []);
+export const writeLocalTahsilatlar = (data: Tahsilat[]) => writeLocalJson(MOCK_TAHSILATLAR_KEY, data);
+
+export const getLocalProjeler = (): Proje[] => readLocalJson<Proje[]>(MOCK_PROJELER_KEY, []);
+export const writeLocalProjeler = (data: Proje[]) => writeLocalJson(MOCK_PROJELER_KEY, data);
 
 const getLocalFirmalar = (): Firma[] => {
   const stored = readLocalJson<Firma[] | null>(MOCK_FIRMALAR_KEY, null);
@@ -866,5 +878,63 @@ export const getErrorLogs = async (filters?: LogFilters): Promise<PaginatedRespo
   return tryOrMock(
     async () => { const { data } = await apiClient.get<PaginatedResponse<IslemLog>>('/log/hatalar', { params: filters }); return data; },
     { data: [], total: 0, page: 1, per_page: 10 }
+  );
+};
+
+// ──────────────────────────────────────────────
+// FİNANS MODELLERİ (Bankalar, Tahsilatlar, Projeler)
+// ──────────────────────────────────────────────
+
+export const getBankalar = async (firmaId: string): Promise<ApiResponse<Banka[]>> => {
+  const all = getLocalBankalar().filter(b => b.firma_id === firmaId);
+  return tryOrMock(
+    async () => { const { data } = await apiClient.get<ApiResponse<Banka[]>>(`/firma/${firmaId}/bankalar`); return data; },
+    { data: all }
+  );
+};
+
+export const createBanka = async (firmaId: string, payload: Partial<Banka>): Promise<ApiResponse<Banka>> => {
+  const newBanka = { ...payload, id: `banka-${Date.now()}`, firma_id: firmaId } as Banka;
+  writeLocalBankalar([...getLocalBankalar(), newBanka]);
+  addSystemLog({ kullanici: getLoggedInEmail() || 'admin', islem_turu: 'create', tablo: 'bankalar', kayit_id: newBanka.id, eski_deger: null, yeni_deger: newBanka as any });
+  return tryOrMock(
+    async () => { const { data } = await apiClient.post<ApiResponse<Banka>>(`/firma/${firmaId}/bankalar`, payload); return data; },
+    { data: newBanka, message: 'Banka eklendi' }
+  );
+};
+
+export const getTahsilatlar = async (firmaId: string): Promise<ApiResponse<Tahsilat[]>> => {
+  const all = getLocalTahsilatlar().filter(t => t.firma_id === firmaId);
+  return tryOrMock(
+    async () => { const { data } = await apiClient.get<ApiResponse<Tahsilat[]>>(`/firma/${firmaId}/tahsilatlar`); return data; },
+    { data: all }
+  );
+};
+
+export const createTahsilat = async (firmaId: string, payload: Partial<Tahsilat>): Promise<ApiResponse<Tahsilat>> => {
+  const newTahsilat = { ...payload, id: `tahsilat-${Date.now()}`, firma_id: firmaId, durum: payload.durum || 'bekliyor' } as Tahsilat;
+  writeLocalTahsilatlar([...getLocalTahsilatlar(), newTahsilat]);
+  addSystemLog({ kullanici: getLoggedInEmail() || 'admin', islem_turu: 'create', tablo: 'tahsilatlar', kayit_id: newTahsilat.id, eski_deger: null, yeni_deger: newTahsilat as any });
+  return tryOrMock(
+    async () => { const { data } = await apiClient.post<ApiResponse<Tahsilat>>(`/firma/${firmaId}/tahsilatlar`, payload); return data; },
+    { data: newTahsilat, message: 'Tahsilat eklendi' }
+  );
+};
+
+export const getProjeler = async (firmaId: string): Promise<ApiResponse<Proje[]>> => {
+  const all = getLocalProjeler().filter(p => p.firma_id === firmaId);
+  return tryOrMock(
+    async () => { const { data } = await apiClient.get<ApiResponse<Proje[]>>(`/firma/${firmaId}/projeler`); return data; },
+    { data: all }
+  );
+};
+
+export const createProje = async (firmaId: string, payload: Partial<Proje>): Promise<ApiResponse<Proje>> => {
+  const newProje = { ...payload, id: `proje-${Date.now()}`, firma_id: firmaId, durum: payload.durum || 'devam' } as Proje;
+  writeLocalProjeler([...getLocalProjeler(), newProje]);
+  addSystemLog({ kullanici: getLoggedInEmail() || 'admin', islem_turu: 'create', tablo: 'projeler', kayit_id: newProje.id, eski_deger: null, yeni_deger: newProje as any });
+  return tryOrMock(
+    async () => { const { data } = await apiClient.post<ApiResponse<Proje>>(`/firma/${firmaId}/projeler`, payload); return data; },
+    { data: newProje, message: 'Proje eklendi' }
   );
 };

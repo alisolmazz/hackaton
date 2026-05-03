@@ -11,7 +11,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   return (
     <div className="flex h-screen overflow-hidden bg-background">
       {/* Desktop Sidebar */}
-      <div className="hidden md:flex md:w-[260px] md:flex-col md:fixed md:inset-y-0 z-[80] bg-[#1a2f5e]">
+      <div className="hidden md:flex md:w-[260px] md:flex-col md:fixed md:inset-y-0 z-[80] bg-[#1a2f5e] print:hidden">
         <Sidebar />
       </div>
 
@@ -23,10 +23,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       </Sheet>
 
       {/* Main Content Area */}
-      <div className="flex flex-col flex-1 min-w-0 md:pl-[260px]">
-        <Header setMobileMenuOpen={setMobileMenuOpen} />
-        <main className="flex-1 overflow-y-auto bg-slate-50 dark:bg-slate-900 p-4 md:p-6 lg:p-8 custom-scrollbar">
-          <div className="animate-in fade-in-0 slide-in-from-bottom-4 duration-300">
+      <div className="flex flex-col flex-1 min-w-0 md:pl-[260px] print:pl-0">
+        <div className="print:hidden">
+          <Header setMobileMenuOpen={setMobileMenuOpen} />
+        </div>
+        <main className="flex-1 overflow-y-auto bg-slate-50 dark:bg-slate-900 p-4 md:p-6 lg:p-8 custom-scrollbar print:bg-white print:p-0">
+          <div className="animate-in fade-in-0 slide-in-from-bottom-4 duration-300 print:animate-none">
             {children}
           </div>
         </main>
