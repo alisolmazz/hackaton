@@ -768,9 +768,23 @@ export const getLogs = async (filters?: LogFilters): Promise<PaginatedResponse<I
 };
 
 export const getIslemLoglari = async (filters?: LogFilters): Promise<PaginatedResponse<IslemLog>> => {
+  const systemLogs = getSystemLogs();
+  const logsAsIslemLog: IslemLog[] = systemLogs.map(s => ({
+    id: s.id,
+    user_id: s.kullanici,
+    islem_turu: s.islem_turu,
+    tablo_adi: s.tablo,
+    kayit_id: s.kayit_id,
+    eski_deger: s.eski_deger,
+    yeni_deger: s.yeni_deger,
+    ip_adresi: '127.0.0.1',
+    created_at: s.zaman,
+  }));
+  const dataToReturn = logsAsIslemLog.length > 0 ? logsAsIslemLog : MOCK_LOGS;
+
   return tryOrMock(
     async () => { const { data } = await apiClient.get<PaginatedResponse<IslemLog>>('/log/islemler', { params: filters }); return data; },
-    { data: MOCK_LOGS, total: MOCK_LOGS.length, page: 1, per_page: 10 }
+    { data: dataToReturn, total: dataToReturn.length, page: 1, per_page: 10 }
   );
 };
 

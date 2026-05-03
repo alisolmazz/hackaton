@@ -4,7 +4,7 @@ export type TahsilatDurum = 'bekliyor' | 'odendi' | 'gecikti';
 export type ProjeDurum = 'devam' | 'bitti';
 export type PremiumPaket = 'temel_analiz' | 'uzman_gorusu' | 'premium_bundle';
 export type TalepDurum = 'bekliyor' | 'onaylandi' | 'reddedildi';
-export type IslemTuru = 'create' | 'update' | 'delete' | 'login' | 'logout';
+export type IslemTuru = 'create' | 'update' | 'delete' | 'login' | 'logout' | 'ocr' | 'premium';
 
 export interface User {
   id: string;
