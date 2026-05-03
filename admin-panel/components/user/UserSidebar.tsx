@@ -9,7 +9,6 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Button } from '@/components/ui/button';
 import { usePremiumModal } from '@/context/PremiumModalContext';
 import { getCurrentUser, logout } from '@/lib/auth';
 import { getPremiumHesapDurumu } from '@/lib/api';
@@ -66,13 +65,16 @@ export function UserSidebar() {
       <Link
         href={item.href}
         className={cn(
-          "flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 text-sm font-medium group",
+          "flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 text-sm font-medium group relative overflow-hidden",
           isActive
-            ? "bg-teal-500/20 text-white border border-teal-400/30 shadow-[0_0_15px_rgba(20,184,166,0.08)]"
-            : "text-teal-100/60 hover:bg-white/5 hover:text-teal-100 border border-transparent"
+            ? "bg-slate-100 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 font-bold shadow-sm border border-slate-200/50 dark:border-indigo-500/20"
+            : "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white border border-transparent"
         )}
       >
-        <item.icon className={cn("h-[18px] w-[18px]", isActive ? "text-teal-400" : "text-teal-400/40 group-hover:text-teal-300")} />
+        {isActive && (
+          <div className="absolute left-0 top-0 bottom-0 w-1 bg-indigo-600 dark:bg-indigo-500 rounded-r-full" />
+        )}
+        <item.icon className={cn("h-5 w-5 transition-transform group-hover:scale-110", isActive ? "text-indigo-600 dark:text-indigo-400" : "text-slate-400 dark:text-slate-500")} />
         {item.label}
       </Link>
     );
@@ -80,85 +82,91 @@ export function UserSidebar() {
 
   return (
     <TooltipProvider delay={200}>
-      <div className="h-screen w-[260px] bg-[#0f4c3a] text-white flex flex-col fixed left-0 top-0 border-r border-[#0a3528] z-40 hidden md:flex shadow-2xl">
+      <div className="h-screen w-[280px] bg-white dark:bg-[#0d1425]/90 backdrop-blur-2xl flex flex-col fixed left-0 top-0 border-r border-slate-200 dark:border-white/5 z-40 hidden md:flex shadow-[4px_0_24px_rgba(0,0,0,0.02)] dark:shadow-none transition-colors duration-300">
 
         {/* LOGO */}
-        <div className="px-6 pt-6 pb-4 border-b border-white/10 shrink-0">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="bg-white/10 p-2 rounded-xl border border-white/20">
-              <Building2 className="h-5 w-5 text-teal-300" />
+        <div className="px-6 pt-8 pb-6 border-b border-slate-100 dark:border-white/5 shrink-0 flex flex-col gap-5">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-indigo-700 text-white rounded-xl flex items-center justify-center font-bold text-xl shadow-lg shadow-indigo-600/30 border border-white/10 shrink-0">
+              P
             </div>
             <div>
-              <span className="text-lg font-bold tracking-tight block leading-tight">Pro Sicht</span>
-              <span className="text-[11px] text-teal-200/50 font-medium tracking-wider uppercase">Müşteri Paneli</span>
+              <span className="text-xl font-extrabold tracking-tight block leading-tight text-slate-900 dark:text-white">Pro Sicht</span>
+              <span className="text-xs text-slate-500 dark:text-slate-400 font-medium tracking-wide">Müşteri Paneli</span>
             </div>
           </div>
-          <div className="bg-white/5 rounded-lg px-3 py-2 border border-white/10">
-            <p className="text-xs text-teal-200/40 font-medium">Firma</p>
-            <p className="text-sm font-semibold text-teal-100 truncate">{firmaAdi}</p>
+          
+          <div className="bg-slate-50 dark:bg-[#131b2e] rounded-xl p-3 border border-slate-200/60 dark:border-white/5 flex items-center gap-3 shadow-inner">
+            <div className="w-8 h-8 rounded-lg bg-indigo-100 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
+              <Building2 className="w-4 h-4" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider">Firma</p>
+              <p className="text-sm font-bold text-slate-900 dark:text-white truncate">{firmaAdi}</p>
+            </div>
           </div>
         </div>
 
         {/* NAVİGASYON */}
-        <div className="flex-1 overflow-y-auto py-5 px-4 space-y-6 custom-scrollbar">
+        <div className="flex-1 overflow-y-auto py-6 px-4 space-y-8 custom-scrollbar">
 
           {/* Genel */}
-          <div className="space-y-1">
-            <div className="text-[10px] font-bold text-teal-200/30 uppercase tracking-[0.15em] mb-2 px-2">Genel</div>
+          <div className="space-y-1.5">
+            <div className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-3 px-4">Genel</div>
             {MENU_GENEL.map(item => <NavLink key={item.href} item={item} />)}
           </div>
 
           {/* Firmam */}
-          <div className="space-y-1">
-            <div className="text-[10px] font-bold text-teal-200/30 uppercase tracking-[0.15em] mb-2 px-2">Firmam</div>
+          <div className="space-y-1.5">
+            <div className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-3 px-4">Firmam</div>
             {MENU_FIRMAM.map(item => <NavLink key={item.href} item={item} />)}
           </div>
 
           {/* Premium (Kilitli) */}
-          <div className="space-y-1">
-            <div className="text-[10px] font-bold text-amber-400/50 uppercase tracking-[0.15em] mb-2 px-2 flex items-center gap-1">
-              <Crown className="w-3 h-3" /> Premium
+          <div className="space-y-1.5">
+            <div className="text-xs font-bold text-amber-500/80 dark:text-amber-500/60 uppercase tracking-wider mb-3 px-4 flex items-center gap-1.5">
+              <Crown className="w-4 h-4" /> Premium
             </div>
             {MENU_PREMIUM_LOCKED.map(item => (
               <Tooltip key={item.label}>
-                <TooltipTrigger render={<button onClick={() => hasPremium ? router.push(item.href) : openModal()} className={cn("w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all border border-transparent cursor-pointer", hasPremium ? "text-teal-100 hover:bg-white/5" : "text-teal-100/30 hover:bg-white/5 hover:text-teal-100/50")} />}>
-                  <item.icon className={cn("h-[18px] w-[18px]", hasPremium ? "text-amber-300" : "text-teal-400/20")} />
+                <TooltipTrigger render={<button onClick={() => hasPremium ? router.push(item.href) : openModal()} className={cn("w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all border border-transparent cursor-pointer group", hasPremium ? "text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/5" : "text-slate-400 dark:text-slate-500 hover:bg-slate-50 dark:hover:bg-white/5 hover:text-slate-600 dark:hover:text-slate-400")} />}>
+                  <item.icon className={cn("h-5 w-5 transition-transform group-hover:scale-110", hasPremium ? "text-amber-500" : "text-slate-300 dark:text-slate-600")} />
                   {item.label}
-                  {hasPremium ? <Crown className="h-3.5 w-3.5 ml-auto text-amber-300" /> : <Lock className="h-3.5 w-3.5 ml-auto text-amber-400/50" />}
+                  {hasPremium ? <Crown className="h-4 w-4 ml-auto text-amber-500" /> : <Lock className="h-4 w-4 ml-auto text-slate-300 dark:text-slate-600" />}
                 </TooltipTrigger>
                 <TooltipContent side="right" className="bg-slate-900 text-white border-slate-800">
-                  <p className="text-xs">{hasPremium ? 'Premium aktif' : 'Premium ozellik - Talep olusturun'}</p>
+                  <p className="text-xs font-medium">{hasPremium ? 'Premium aktif' : 'Premium özellik - Yükseltin'}</p>
                 </TooltipContent>
               </Tooltip>
             ))}
           </div>
 
           {/* Hesap */}
-          <div className="space-y-1">
-            <div className="text-[10px] font-bold text-teal-200/30 uppercase tracking-[0.15em] mb-2 px-2">Hesap</div>
+          <div className="space-y-1.5">
+            <div className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-3 px-4">Hesap</div>
             {MENU_HESAP.map(item => <NavLink key={item.href} item={item} />)}
             <button
               onClick={() => openModal()}
-              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold text-amber-400/80 hover:bg-amber-500/10 hover:text-amber-300 transition-all border border-amber-400/10"
+              className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-500/10 transition-all border border-amber-200 dark:border-amber-500/20 group"
             >
-              <Crown className="h-[18px] w-[18px] text-amber-400/60" />
-              Premium Paketler
+              <Crown className="h-5 w-5 text-amber-500 transition-transform group-hover:scale-110" />
+              Paketi Yükselt
             </button>
           </div>
         </div>
 
         {/* FOOTER - Kullanıcı */}
-        <div className="p-4 border-t border-white/10 shrink-0">
+        <div className="p-4 border-t border-slate-100 dark:border-white/5 shrink-0 bg-slate-50/50 dark:bg-transparent">
           <div className="flex items-center gap-3 px-2">
-            <div className="w-9 h-9 rounded-full bg-teal-600/40 flex items-center justify-center border border-teal-500/30 text-sm font-bold text-teal-200">
-              AY
+            <div className="w-10 h-10 rounded-xl bg-indigo-100 dark:bg-indigo-500/20 flex items-center justify-center border border-indigo-200 dark:border-indigo-500/30 text-sm font-bold text-indigo-700 dark:text-indigo-400 shrink-0 shadow-sm">
+              {user?.name?.charAt(0).toUpperCase() || 'U'}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-teal-100 truncate">{user?.name || 'Kullanıcı'}</p>
-              <p className="text-[11px] text-teal-200/40 truncate">{user?.email || ''}</p>
+              <p className="text-sm font-bold text-slate-900 dark:text-white truncate">{user?.name || 'Kullanıcı'}</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{user?.email || ''}</p>
             </div>
-            <button onClick={handleLogout} className="p-2 rounded-lg hover:bg-red-500/20 text-teal-200/40 hover:text-red-400 transition-colors" title="Çıkış Yap">
-              <LogOut className="h-4 w-4" />
+            <button onClick={handleLogout} className="p-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-500/20 text-slate-400 hover:text-red-600 dark:hover:text-red-400 transition-colors" title="Çıkış Yap">
+              <LogOut className="h-5 w-5" />
             </button>
           </div>
         </div>
