@@ -403,6 +403,7 @@ export const createFirma = async (payload: Partial<Firma>): Promise<ApiResponse<
 };
 
 export const updateFirma = async (id: string, payload: Partial<Firma>): Promise<ApiResponse<Firma>> => {
+  addSystemLog({ kullanici: getLoggedInEmail() || 'admin', islem_turu: 'update', tablo: 'firmalar', kayit_id: id, eski_deger: null, yeni_deger: payload as Record<string, unknown> });
   return tryOrMock(
     async () => { const { data } = await apiClient.put<ApiResponse<Firma>>(`/firma/${id}`, payload); return data; },
     { data: { ...MOCK_FIRMALAR[0], ...payload, id } as Firma }
@@ -410,8 +411,10 @@ export const updateFirma = async (id: string, payload: Partial<Firma>): Promise<
 };
 
 export const deleteFirma = async (id: string): Promise<ApiResponse<void>> => {
+  const deleted = getLocalFirmalar().find(f => f.id === id);
   const all = getLocalFirmalar().filter(f => f.id !== id);
   writeLocalJson(MOCK_FIRMALAR_KEY, all);
+  addSystemLog({ kullanici: getLoggedInEmail() || 'admin', islem_turu: 'delete', tablo: 'firmalar', kayit_id: id, eski_deger: deleted ? { unvan: deleted.unvan } : null, yeni_deger: null });
   return tryOrMock(
     async () => { const { data } = await apiClient.delete<ApiResponse<void>>(`/firma/${id}`); return data; },
     { data: undefined as unknown as void }
@@ -487,6 +490,7 @@ export const saveOcrFinansalTaslak = (ocrData: OcrSonucu): OcrFinansalTaslak | n
 
   const cache = readLocalJson<Record<string, OcrFinansalTaslak>>(OCR_FINANSAL_TASLAK_KEY, {});
   writeLocalJson(OCR_FINANSAL_TASLAK_KEY, { ...cache, [email]: taslak });
+  addSystemLog({ kullanici: email, islem_turu: 'ocr', tablo: 'finansal_raporlar', kayit_id: email, eski_deger: null, yeni_deger: { firma: taslak.firma_adi, gelir: taslak.toplam_gelir, gider: taslak.toplam_gider } });
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new Event('ocr-finansal-data-changed'));
   }
@@ -598,9 +602,11 @@ export const onaylaTalep = async (talepId: string): Promise<ApiResponse<void>> =
   try {
     const { data } = await apiClient.put<ApiResponse<void>>(`/premium/${talepId}/onayla`);
     updateLocalPremiumTalep(talepId, 'onaylandi');
+    addSystemLog({ kullanici: getLoggedInEmail() || 'admin', islem_turu: 'update', tablo: 'premium_talepler', kayit_id: talepId, eski_deger: { durum: 'bekliyor' }, yeni_deger: { durum: 'onaylandi' } });
     return data;
   } catch {
     updateLocalPremiumTalep(talepId, 'onaylandi');
+    addSystemLog({ kullanici: getLoggedInEmail() || 'admin', islem_turu: 'update', tablo: 'premium_talepler', kayit_id: talepId, eski_deger: { durum: 'bekliyor' }, yeni_deger: { durum: 'onaylandi' } });
     return { data: undefined as unknown as void, message: 'Talep onaylandi' };
   }
 };
@@ -609,9 +615,11 @@ export const reddettTalep = async (talepId: string, neden?: string): Promise<Api
   try {
     const { data } = await apiClient.put<ApiResponse<void>>(`/premium/${talepId}/reddet`, { neden });
     updateLocalPremiumTalep(talepId, 'reddedildi', neden);
+    addSystemLog({ kullanici: getLoggedInEmail() || 'admin', islem_turu: 'update', tablo: 'premium_talepler', kayit_id: talepId, eski_deger: { durum: 'bekliyor' }, yeni_deger: { durum: 'reddedildi', neden } });
     return data;
   } catch {
     updateLocalPremiumTalep(talepId, 'reddedildi', neden);
+    addSystemLog({ kullanici: getLoggedInEmail() || 'admin', islem_turu: 'update', tablo: 'premium_talepler', kayit_id: talepId, eski_deger: { durum: 'bekliyor' }, yeni_deger: { durum: 'reddedildi', neden } });
     return { data: undefined as unknown as void, message: 'Talep reddedildi' };
   }
 };
@@ -628,12 +636,15 @@ export const getPremiumErisimlerim = async (): Promise<PremiumErisim[]> => {
 };
 
 export const premiumSatinAl = async (paketTuru: PremiumPaket): Promise<ApiResponse<void>> => {
+  const email = getLoggedInEmail() || 'anon';
   try {
     const { data } = await apiClient.post<ApiResponse<void>>('/premium/satin-al', { paket_turu: paketTuru });
     await createLocalPremiumTalep(paketTuru);
+    addSystemLog({ kullanici: email, islem_turu: 'premium', tablo: 'premium_talepler', kayit_id: paketTuru, eski_deger: null, yeni_deger: { paket: paketTuru, islem: 'satin_alma_talebi' } });
     return data;
   } catch {
     await createLocalPremiumTalep(paketTuru);
+    addSystemLog({ kullanici: email, islem_turu: 'premium', tablo: 'premium_talepler', kayit_id: paketTuru, eski_deger: null, yeni_deger: { paket: paketTuru, islem: 'satin_alma_talebi' } });
     return { data: undefined as unknown as void, message: 'Talep gonderildi' };
   }
 };
@@ -653,6 +664,7 @@ export const generateUserFinansalAIAnaliz = async (finansalVeriler: Record<strin
   const email = getLoggedInEmail() || 'anon';
   const cache = readLocalJson<Record<string, string>>(AI_ANALIZ_KEY, {});
   writeLocalJson(AI_ANALIZ_KEY, { ...cache, [email]: payload.data.analiz });
+  addSystemLog({ kullanici: email, islem_turu: 'create', tablo: 'ai_analizler', kayit_id: email, eski_deger: null, yeni_deger: { islem: 'ai_finansal_analiz', uzunluk: payload.data.analiz.length } });
 
   return payload as ApiResponse<{ analiz: string }>;
 };
@@ -703,6 +715,7 @@ export const uzmanAnalizTalepEt = async (finansalVeriler: Record<string, unknown
   };
 
   writeLocalJson(UZMAN_ANALIZ_TALEPLERI_KEY, [talep, ...talepler]);
+  addSystemLog({ kullanici: user.email, islem_turu: 'create', tablo: 'uzman_analiz_talepleri', kayit_id: talep.id, eski_deger: null, yeni_deger: { firma: talep.firma_adi, durum: 'bekliyor' } });
   return { data: talep, message: 'Uzman analizi talebi admin paneline iletildi.' };
 };
 
@@ -723,6 +736,7 @@ export const uzmanAnalizGonder = async (talepId: string, uzmanGorusu: string): P
 
   if (!updated) throw new Error('Uzman analizi talebi bulunamadi.');
   writeLocalJson(UZMAN_ANALIZ_TALEPLERI_KEY, next);
+  addSystemLog({ kullanici: getLoggedInEmail() || 'admin', islem_turu: 'update', tablo: 'uzman_analiz_talepleri', kayit_id: talepId, eski_deger: { durum: 'bekliyor' }, yeni_deger: { durum: 'tamamlandi' } });
   return { data: updated, message: 'Uzman gorusu kullaniciya gonderildi.' };
 };
 

@@ -111,6 +111,8 @@ function LoglarContent() {
       case 'delete': return <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200 uppercase text-[10px]">delete</Badge>;
       case 'login': return <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200 uppercase text-[10px]">login</Badge>;
       case 'logout': return <Badge variant="outline" className="bg-slate-100 text-slate-700 border-slate-300 uppercase text-[10px]">logout</Badge>;
+      case 'ocr': return <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200 uppercase text-[10px]">ocr</Badge>;
+      case 'premium': return <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 uppercase text-[10px]">premium</Badge>;
       default: return <Badge variant="outline" className="uppercase text-[10px]">{tur}</Badge>;
     }
   };
@@ -169,7 +171,10 @@ function LoglarContent() {
                       <SelectItem value="create">Oluşturma</SelectItem>
                       <SelectItem value="update">Güncelleme</SelectItem>
                       <SelectItem value="delete">Silme</SelectItem>
-                      <SelectItem value="login">Giriş/Çıkış</SelectItem>
+                      <SelectItem value="login">Giriş</SelectItem>
+                      <SelectItem value="logout">Çıkış</SelectItem>
+                      <SelectItem value="ocr">OCR</SelectItem>
+                      <SelectItem value="premium">Premium</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
