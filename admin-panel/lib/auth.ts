@@ -1,4 +1,5 @@
 import { User } from '@/types';
+import { addSystemLog } from '@/lib/api';
 
 // Mock function to get token
 export const getToken = async (): Promise<string | null> => {
@@ -76,6 +77,9 @@ export const login = async (email: string, sifre: string) => {
     document.cookie = `sb-email=${encodeURIComponent(user.email)}; path=/; max-age=86400; SameSite=Lax`;
   }
 
+  // Log kaydı
+  addSystemLog({ kullanici: email, islem_turu: 'login', tablo: 'auth', kayit_id: email, eski_deger: null, yeni_deger: { role: user.role } });
+
   return { user: { email, user_metadata: { role: user.role } }, session: { access_token: token } };
 };
 
@@ -109,12 +113,20 @@ export const register = async (firmaAdi: string, adSoyad: string, email: string,
 
   localStorage.setItem('mock_users', JSON.stringify(users));
 
+  // Log kaydı
+  addSystemLog({ kullanici: email, islem_turu: 'create', tablo: 'kullanicilar', kayit_id: email, eski_deger: null, yeni_deger: { firmaAdi, adSoyad, role: 'user' } });
+
   return { user: { email, user_metadata: { firmaAdi, adSoyad, role: 'user' } } };
 };
 
 // ÇIKIŞ YAPMA
 export const logout = async () => {
   if (typeof window !== 'undefined') {
+    // Log kaydı (çıkış yapmadan önce email'i al)
+    const emailCookie = `; ${document.cookie}`.split(`; sb-email=`);
+    const email = emailCookie.length === 2 ? decodeURIComponent(emailCookie.pop()?.split(';').shift() || '') : 'unknown';
+    addSystemLog({ kullanici: email, islem_turu: 'logout', tablo: 'auth', kayit_id: email, eski_deger: null, yeni_deger: null });
+
     document.cookie = `sb-access-token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT; SameSite=Lax`;
     document.cookie = `sb-role=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT; SameSite=Lax`;
     document.cookie = `sb-email=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT; SameSite=Lax`;

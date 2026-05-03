@@ -22,17 +22,14 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Label } from '@/components/ui/label';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Legend } from 'recharts';
 
-// --- MOCK DATA ---
-const ISLEM_LOGLARI = Array.from({ length: 45 }).map((_, i) => ({
-  id: `LOG-${1000 + i}`,
-  zaman: new Date(Date.now() - (Math.random() * 86400000 * 5)).toISOString(),
-  kullanici: ['ahmet@pro.com', 'ayse@pro.com', 'admin@pro.com'][Math.floor(Math.random() * 3)],
-  islem_turu: ['create', 'update', 'delete', 'login', 'logout'][Math.floor(Math.random() * 5)],
-  tablo: ['firmalar', 'finansal_raporlar', 'kullanicilar', 'auth', 'sozlesmeler'][Math.floor(Math.random() * 5)],
-  kayit_id: Math.floor(Math.random() * 1000).toString(),
-  eski_deger: { durum: "bekliyor", tutar: 1000 },
-  yeni_deger: { durum: "onaylandi", tutar: 1500 }
-})).sort((a, b) => new Date(b.zaman).getTime() - new Date(a.zaman).getTime());
+import { getSystemLogs, type SystemLog } from '@/lib/api';
+
+// Seed logs to show something initially
+const SEED_LOGS: SystemLog[] = [
+  { id: 'SEED-1', zaman: new Date(Date.now() - 2 * 3600000).toISOString(), kullanici: 'admin@prosicht.com', islem_turu: 'login', tablo: 'auth', kayit_id: 'admin@prosicht.com', eski_deger: null, yeni_deger: { role: 'admin' } },
+  { id: 'SEED-2', zaman: new Date(Date.now() - 4 * 3600000).toISOString(), kullanici: 'admin@prosicht.com', islem_turu: 'create', tablo: 'firmalar', kayit_id: '1', eski_deger: null, yeni_deger: { unvan: 'Türkiye Tech A.Ş.' } },
+  { id: 'SEED-3', zaman: new Date(Date.now() - 8 * 3600000).toISOString(), kullanici: 'admin@prosicht.com', islem_turu: 'update', tablo: 'firmalar', kayit_id: '2', eski_deger: { ciro: 25000000 }, yeni_deger: { ciro: 28000000 } },
+];
 
 const AI_LOGLARI = [
   { id: 1, zaman: new Date(Date.now() - 3600000).toISOString(), firma: 'TechNova', tur: 'ocr', sure: 1250, durum: 'basarili', promptUzunluk: 0 },
@@ -74,6 +71,13 @@ function LoglarContent() {
   const [seciliHata, setSeciliHata] = useState<any>(null);
   const [hataCozulmedi, setHataCozulmedi] = useState(false);
 
+  // Gerçek logları localStorage'dan oku
+  const ISLEM_LOGLARI = useMemo(() => {
+    const real = getSystemLogs();
+    const all = real.length > 0 ? real : SEED_LOGS;
+    return all.sort((a, b) => new Date(b.zaman).getTime() - new Date(a.zaman).getTime());
+  }, []);
+
   // Pagination Logic
   const filteredIslemLoglari = useMemo(() => {
     return ISLEM_LOGLARI.filter(l => {
@@ -81,7 +85,7 @@ function LoglarContent() {
       const matchArama = l.id.toLowerCase().includes(arama.toLowerCase()) || l.kullanici.toLowerCase().includes(arama.toLowerCase());
       return matchType && matchArama;
     });
-  }, [filterType, arama]);
+  }, [ISLEM_LOGLARI, filterType, arama]);
 
   const paginatedLogs = filteredIslemLoglari.slice((page - 1) * perPage, page * perPage);
   const totalPages = Math.ceil(filteredIslemLoglari.length / perPage);

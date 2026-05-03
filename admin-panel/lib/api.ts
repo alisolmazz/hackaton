@@ -98,6 +98,34 @@ const UZMAN_ANALIZ_TALEPLERI_KEY = 'mock_uzman_analiz_talepleri';
 const AI_ANALIZ_KEY = 'mock_ai_finansal_analizler';
 const OCR_FINANSAL_TASLAK_KEY = 'mock_ocr_finansal_taslaklar';
 const MOCK_FIRMALAR_KEY = 'mock_firmalar';
+const SYSTEM_LOGS_KEY = 'mock_system_logs';
+
+export interface SystemLog {
+  id: string;
+  zaman: string;
+  kullanici: string;
+  islem_turu: 'create' | 'update' | 'delete' | 'login' | 'logout' | 'ocr' | 'premium';
+  tablo: string;
+  kayit_id: string;
+  eski_deger: Record<string, unknown> | null;
+  yeni_deger: Record<string, unknown> | null;
+}
+
+export const addSystemLog = (log: Omit<SystemLog, 'id' | 'zaman'>): void => {
+  if (typeof window === 'undefined') return;
+  const logs = readLocalJson<SystemLog[]>(SYSTEM_LOGS_KEY, []);
+  logs.unshift({
+    id: `LOG-${Date.now()}`,
+    zaman: new Date().toISOString(),
+    ...log,
+  });
+  // En fazla 200 log tut
+  writeLocalJson(SYSTEM_LOGS_KEY, logs.slice(0, 200));
+};
+
+export const getSystemLogs = (): SystemLog[] => {
+  return readLocalJson<SystemLog[]>(SYSTEM_LOGS_KEY, []);
+};
 
 const getLocalFirmalar = (): Firma[] => {
   const stored = readLocalJson<Firma[] | null>(MOCK_FIRMALAR_KEY, null);
@@ -116,6 +144,7 @@ export const saveLocalFirma = (payload: Partial<Firma>): Firma => {
     const updated = { ...existing, ...payload, updated_at: now, onaylandi: true };
     const next = firmalar.map(f => f.id === existing.id ? updated : f);
     writeLocalJson(MOCK_FIRMALAR_KEY, next);
+    addSystemLog({ kullanici: email, islem_turu: 'update', tablo: 'firmalar', kayit_id: existing.id, eski_deger: { unvan: existing.unvan }, yeni_deger: { unvan: updated.unvan } });
     return updated;
   }
 
@@ -140,6 +169,7 @@ export const saveLocalFirma = (payload: Partial<Firma>): Firma => {
     updated_at: now,
   };
   writeLocalJson(MOCK_FIRMALAR_KEY, [newFirma, ...firmalar]);
+  addSystemLog({ kullanici: email, islem_turu: 'create', tablo: 'firmalar', kayit_id: newFirma.id, eski_deger: null, yeni_deger: { unvan: newFirma.unvan, vergi_no: newFirma.vergi_no } });
   return newFirma;
 };
 
