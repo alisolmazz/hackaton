@@ -3,12 +3,12 @@
 import React, { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Building2, Edit2, Trash2, CheckCircle2, ChevronLeft, Calendar as CalendarIcon, Phone, MapPin, Briefcase, FileText, PlusCircle } from 'lucide-react';
+import { Building2, Edit2, Trash2, CheckCircle2, ChevronLeft, Calendar as CalendarIcon, Phone, MapPin, Briefcase, FileText, PlusCircle, UploadCloud, Sparkles, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import { toast } from 'sonner';
 
-import { getFirma, updateFirma, deleteFirma } from '@/lib/api';
+import { getFirma, updateFirma, deleteFirma, ocrFirma } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -28,6 +28,7 @@ export default function FirmaDetayPage() {
   const id = params.id as string;
   const [isEditMode, setIsEditMode] = useState(false);
   const [isAltFirmaModalOpen, setIsAltFirmaModalOpen] = useState(false);
+  const [isOcrLoading, setIsOcrLoading] = useState(false);
   const [altFirmaForm, setAltFirmaForm] = useState({ unvan: '', vergi_no: '', telefon: '', yetkili_kisi: '', adres: '' });
 
   const { data: altFirmalarResponse } = useAltFirmalar(id);
@@ -51,6 +52,40 @@ export default function FirmaDetayPage() {
         queryClient.invalidateQueries({ queryKey: ['alt_firmalar', id] });
       }
     });
+  };
+
+  const handleOcrUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!['application/pdf', 'image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+      toast.error('Lütfen PDF, JPG, PNG veya WEBP formatında bir dosya seçin.');
+      return;
+    }
+
+    setIsOcrLoading(true);
+    const toastId = toast.loading('Belge analiz ediliyor...');
+
+    try {
+      const response = await ocrFirma('temp_id', file);
+      const ocrData = response.data;
+      
+      setAltFirmaForm(prev => ({
+        ...prev,
+        unvan: ocrData.unvan || prev.unvan,
+        vergi_no: ocrData.vergi_no || prev.vergi_no,
+        yetkili_kisi: ocrData.yetkili_kisi || prev.yetkili_kisi,
+        telefon: ocrData.telefon || prev.telefon,
+        adres: ocrData.adres || prev.adres,
+      }));
+      
+      toast.success('Belge başarıyla okundu ve form dolduruldu.', { id: toastId });
+    } catch (error) {
+      toast.error('Belge okunamadı, lütfen manuel doldurun.', { id: toastId });
+    } finally {
+      setIsOcrLoading(false);
+      if (e.target) e.target.value = '';
+    }
   };
 
   const { data: firmaResponse, isLoading } = useQuery({
@@ -329,16 +364,32 @@ export default function FirmaDetayPage() {
                       <p className="text-sm text-slate-500">Bu firmaya bağlı olan bağımsız iştirakler ve şubeler.</p>
                     </div>
                     <Dialog open={isAltFirmaModalOpen} onOpenChange={setIsAltFirmaModalOpen}>
-                      <DialogTrigger>
-                        <Button variant="outline" className="shadow-sm">
-                          <PlusCircle className="w-4 h-4 mr-2" /> Alt Firma Ekle
-                        </Button>
+                      <DialogTrigger render={<Button variant="outline" className="shadow-sm" />}>
+                        <PlusCircle className="w-4 h-4 mr-2" /> Alt Firma Ekle
                       </DialogTrigger>
                       <DialogContent>
                         <DialogHeader>
                           <DialogTitle>Yeni Alt Firma/Şube Ekle</DialogTitle>
                         </DialogHeader>
-                        <div className="grid gap-4 py-4">
+                        
+                        <div className="bg-blue-50/50 border border-blue-100 rounded-lg p-4 flex items-center justify-between gap-3 mb-2">
+                          <div className="flex items-center gap-3">
+                            <UploadCloud className="w-5 h-5 text-blue-500" />
+                            <div>
+                              <p className="text-sm font-medium text-slate-800">Otomatik Doldur</p>
+                              <p className="text-xs text-slate-500">Vergi levhası yükleyerek hızlıca doldurun.</p>
+                            </div>
+                          </div>
+                          <div>
+                            <input type="file" id="alt-ocr-upload" className="hidden" accept=".pdf,image/jpeg,image/png,image/webp" onChange={handleOcrUpload} disabled={isOcrLoading} />
+                            <Button type="button" size="sm" variant="outline" onClick={() => document.getElementById('alt-ocr-upload')?.click()} disabled={isOcrLoading}>
+                              {isOcrLoading ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Sparkles className="w-3 h-3 mr-1 text-blue-500" />}
+                              Yükle
+                            </Button>
+                          </div>
+                        </div>
+
+                        <div className="grid gap-4 py-2">
                           <div className="grid gap-2">
                             <Label htmlFor="unvan">Ünvan</Label>
                             <Input id="unvan" value={altFirmaForm.unvan} onChange={(e) => setAltFirmaForm({ ...altFirmaForm, unvan: e.target.value })} placeholder="Firma Ünvanı" />
@@ -386,10 +437,8 @@ export default function FirmaDetayPage() {
                           </CardContent>
                           
                           <AlertDialog>
-                            <AlertDialogTrigger>
-                              <Button variant="ghost" size="icon" className="absolute top-2 right-2 text-slate-400 opacity-0 group-hover:opacity-100 hover:text-red-500 hover:bg-red-50 delete-btn transition-opacity">
-                                <Trash2 className="w-4 h-4" />
-                              </Button>
+                            <AlertDialogTrigger render={<Button variant="ghost" size="icon" className="absolute top-2 right-2 text-slate-400 opacity-0 group-hover:opacity-100 hover:text-red-500 hover:bg-red-50 delete-btn transition-opacity" />}>
+                              <Trash2 className="w-4 h-4" />
                             </AlertDialogTrigger>
                             <AlertDialogContent>
                               <AlertDialogHeader>
