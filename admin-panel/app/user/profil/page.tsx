@@ -22,7 +22,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { usePremiumModal } from '@/context/PremiumModalContext';
 import { getCurrentUser, logout } from '@/lib/auth';
-import { getPremiumHesapDurumu } from '@/lib/api';
+import { getPremiumHesapDurumu, premiumIptalTalepEt } from '@/lib/api';
 import type { User as AppUser } from '@/types';
 
 const sifreSchema = z.object({
@@ -51,6 +51,8 @@ export default function ProfilPage() {
   const [sifreSaving, setSifreSaving] = useState(false);
   const [hasPremium, setHasPremium] = useState(false);
   const [premiumPaket, setPremiumPaket] = useState<string | null>(null);
+  const [iptalTalebiBekliyor, setIptalTalebiBekliyor] = useState(false);
+  const [iptalLoading, setIptalLoading] = useState(false);
 
   const { register, handleSubmit, formState: { errors }, reset } = useForm({
     resolver: zodResolver(sifreSchema),
@@ -64,6 +66,7 @@ export default function ProfilPage() {
       const durum = await getPremiumHesapDurumu();
       setHasPremium(durum.hasPremium);
       setPremiumPaket(durum.paket);
+      setIptalTalebiBekliyor(durum.iptalTalebiBekliyor);
     };
     loadData();
     // Listen for premium changes
@@ -71,6 +74,7 @@ export default function ProfilPage() {
       getPremiumHesapDurumu().then(d => {
         setHasPremium(d.hasPremium);
         setPremiumPaket(d.paket);
+        setIptalTalebiBekliyor(d.iptalTalebiBekliyor);
       });
     };
     window.addEventListener('premium-data-changed', handler);
@@ -89,6 +93,22 @@ export default function ProfilPage() {
 
   const handleLogout = async () => {
     await logout();
+  };
+
+  const handlePremiumIptal = async () => {
+    setIptalLoading(true);
+    try {
+      await premiumIptalTalepEt();
+      setIptalTalebiBekliyor(true);
+      window.dispatchEvent(new Event('premium-data-changed'));
+      toast.success('Premium iptal talebiniz iletildi.', {
+        description: 'Admin onayi sonrasinda premium erisiminiz kapatilacaktir.',
+      });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Iptal talebi gonderilemedi.');
+    } finally {
+      setIptalLoading(false);
+    }
   };
 
   return (
@@ -226,6 +246,31 @@ export default function ProfilPage() {
                       <Badge className="bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/30 shadow-none font-bold px-4 py-2 text-sm">
                         <CheckCircle2 className="w-4 h-4 mr-2" /> Aktif Üyelik
                       </Badge>
+                      <AlertDialog>
+                        <AlertDialogTrigger render={
+                          <Button
+                            variant="outline"
+                            disabled={iptalTalebiBekliyor || iptalLoading}
+                            className="border-rose-300 text-rose-600 hover:bg-rose-50 dark:border-rose-500/30 dark:text-rose-400 dark:hover:bg-rose-500/10 font-bold"
+                          />
+                        }>
+                            {iptalLoading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Gonderiliyor...</> : iptalTalebiBekliyor ? 'Iptal Talebi Bekliyor' : "Premium'u Iptal Et"}
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Premium uyeligi iptal edilsin mi?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Bu islem admin paneline iptal talebi gonderir. Talep onaylandiginda AI analiz, uzman gorusu ve sunum gibi premium ozelliklere erisiminiz kapatilacaktir.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Vazgec</AlertDialogCancel>
+                            <AlertDialogAction onClick={handlePremiumIptal} className="bg-rose-600 hover:bg-rose-700 text-white">
+                              Iptal Talebi Gonder
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
                     </div>
                   </CardContent>
                 </Card>

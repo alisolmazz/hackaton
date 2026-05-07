@@ -70,7 +70,6 @@ export default function PremiumTaleplerPage() {
 
   const handleOnayla = async () => {
     if (!onayDialog.id) return;
-    
     await onaylaTalep(onayDialog.id);
     setTalepler(prev => prev.map(t => t.id === onayDialog.id ? { ...t, durum: 'onaylandi' } : t));
     
@@ -104,6 +103,13 @@ export default function PremiumTaleplerPage() {
   const getFirmaAdi = (talep: PremiumTalep) => talep.firma_adi || talep.firma?.unvan || 'Firma bilgisi yok';
   const getTalepEden = (talep: PremiumTalep) => talep.talep_eden || talep.user_email || 'Kullanici bilgisi yok';
   const getPaketAdi = (talep: PremiumTalep) => PREMIUM_PAKET_ADLARI[talep.paket_turu] || talep.paket_turu;
+  const isIptalTalebi = (talep: PremiumTalep) => talep.talep_tipi === 'iptal';
+
+  const getTalepTipiBadge = (talep: PremiumTalep) => (
+    isIptalTalebi(talep)
+      ? <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">Iptal Talebi</Badge>
+      : <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200">Uyelik Talebi</Badge>
+  );
 
   const getPaketBadge = (talep: PremiumTalep) => {
     switch (talep.paket_turu) {
@@ -224,7 +230,12 @@ export default function PremiumTaleplerPage() {
                       </span>
                     </TableCell>
                     <TableCell className="text-slate-600 font-medium">{getTalepEden(t)}</TableCell>
-                    <TableCell>{getPaketBadge(t)}</TableCell>
+                    <TableCell>
+                      <div className="flex flex-col gap-1">
+                        {getPaketBadge(t)}
+                        {getTalepTipiBadge(t)}
+                      </div>
+                    </TableCell>
                     <TableCell className="text-sm">{format(new Date(t.created_at), 'dd MMM yyyy, HH:mm', {locale:tr})}</TableCell>
                     <TableCell>{getDurumBadge(t.durum)}</TableCell>
                     <TableCell className="text-right pr-6" onClick={(e) => e.stopPropagation()}>

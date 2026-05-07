@@ -41,6 +41,21 @@ apiClient.interceptors.request.use(
 apiClient.interceptors.response.use(
   (response: AxiosResponse) => response,
   (error: AxiosError) => {
+    const isExpectedMockFallback = !error.response && (error.code === 'ERR_NETWORK' || error.message === 'Network Error');
+    if (isExpectedMockFallback) {
+      return Promise.reject(error);
+    }
+
+    const endpoint = error.config?.url || 'unknown-endpoint';
+    const status = error.response?.status || (error.code === 'ECONNABORTED' ? 408 : 0);
+    const tur = error.response?.statusText || error.code || error.name || 'ApiError';
+    addErrorLog({
+      endpoint,
+      kod: status,
+      tur,
+      kullanici: typeof window !== 'undefined' ? getLoggedInEmail() || 'anon' : 'server',
+      stack: `${error.name}: ${error.message}\n${error.stack || ''}`,
+    });
     // Sessizce hata döndür — mock fallback'ler devreye girecek
     return Promise.reject(error);
   }
@@ -105,6 +120,8 @@ const MOCK_BANKALAR_KEY = 'mock_bankalar';
 const MOCK_TAHSILATLAR_KEY = 'mock_tahsilatlar';
 const MOCK_PROJELER_KEY = 'mock_projeler';
 const MOCK_NAKIT_AKIS_KEY = 'mock_nakit_akis';
+const AI_LOGS_KEY = 'mock_real_ai_logs';
+const ERROR_LOGS_KEY = 'mock_real_error_logs';
 
 export interface SystemLog {
   id: string;
@@ -115,6 +132,17 @@ export interface SystemLog {
   kayit_id: string;
   eski_deger: Record<string, unknown> | null;
   yeni_deger: Record<string, unknown> | null;
+}
+
+export interface LocalErrorLog {
+  id: string;
+  zaman: string;
+  endpoint: string;
+  kod: number;
+  tur: string;
+  kullanici: string;
+  cozuldu: boolean;
+  stack: string;
 }
 
 export const addSystemLog = (log: Omit<SystemLog, 'id' | 'zaman'>): void => {
@@ -131,6 +159,38 @@ export const addSystemLog = (log: Omit<SystemLog, 'id' | 'zaman'>): void => {
 
 export const getSystemLogs = (): SystemLog[] => {
   return readLocalJson<SystemLog[]>(SYSTEM_LOGS_KEY, []);
+};
+
+export const addAICagriLog = (log: Omit<AICagriLog, 'id' | 'created_at'>): void => {
+  if (typeof window === 'undefined') return;
+  const logs = readLocalJson<AICagriLog[]>(AI_LOGS_KEY, []);
+  logs.unshift({
+    id: `AI-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+    created_at: new Date().toISOString(),
+    ...log,
+  });
+  writeLocalJson(AI_LOGS_KEY, logs.slice(0, 300));
+};
+
+export const getLocalAICagriLoglari = (): AICagriLog[] => {
+  return readLocalJson<AICagriLog[]>(AI_LOGS_KEY, []);
+};
+
+export const addErrorLog = (log: Omit<LocalErrorLog, 'id' | 'zaman' | 'cozuldu'>): void => {
+  if (typeof window === 'undefined') return;
+  const logs = readLocalJson<LocalErrorLog[]>(ERROR_LOGS_KEY, []);
+  logs.unshift({
+    id: `ERR-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+    zaman: new Date().toISOString(),
+    cozuldu: false,
+    ...log,
+  });
+  writeLocalJson(ERROR_LOGS_KEY, logs.slice(0, 300));
+};
+
+export const getLocalErrorLogs = (): LocalErrorLog[] => {
+  const logs = readLocalJson<LocalErrorLog[]>(ERROR_LOGS_KEY, []);
+  return logs.filter(log => !(log.kod === 0 && (log.tur === 'ERR_NETWORK' || log.stack.includes('Network Error'))));
 };
 
 export const getLocalYatirimlar = (): Yatirim[] => {
@@ -215,6 +275,7 @@ type PremiumHesapDurumu = {
   talepDurum: 'yok' | TalepDurum;
   talep: PremiumTalep | null;
   paket: PremiumPaket | null;
+  iptalTalebiBekliyor: boolean;
 };
 
 // Güvenlik: Hassas finansal verilerin istemci tarafında "At-Rest" şifrelenmesi
@@ -330,7 +391,7 @@ const createLocalPremiumTalep = async (paketTuru: PremiumPaket): Promise<Premium
   const user = mockUser || authUser;
   const userKey = getUserKey(user);
   const talepler = getLocalPremiumTalepler();
-  const existingPending = talepler.find(talep => getTalepUserKey(talep) === userKey && talep.durum === 'bekliyor');
+  const existingPending = talepler.find(talep => getTalepUserKey(talep) === userKey && talep.durum === 'bekliyor' && (talep.talep_tipi || 'abonelik') === 'abonelik');
   const now = new Date().toISOString();
 
   if (existingPending) {
@@ -348,9 +409,49 @@ const createLocalPremiumTalep = async (paketTuru: PremiumPaket): Promise<Premium
     talep_eden: user.name || user.adSoyad || user.email,
     firma_adi: user.firmaAdi || 'Firma bilgisi yok',
     paket_turu: paketTuru,
+    talep_tipi: 'abonelik',
     durum: 'bekliyor',
     created_at: now,
   };
+  writeLocalJson(PREMIUM_TALEPLER_KEY, [talep, ...talepler]);
+  return talep;
+};
+
+const createLocalPremiumIptalTalebi = async (): Promise<PremiumTalep> => {
+  const authUser = await getCurrentUser();
+  const mockUser = getCurrentMockUser();
+  if (!authUser && !mockUser) {
+    throw new Error('Premium iptal talebi icin once giris yapmalisiniz.');
+  }
+
+  const user = mockUser || authUser;
+  const userKey = getUserKey(user);
+  const talepler = getLocalPremiumTalepler();
+  const kullaniciTalepleri = talepler
+    .filter(talep => getTalepUserKey(talep) === userKey || talep.user_id === authUser?.id)
+    .sort((a, b) => new Date(b.updated_at || b.created_at).getTime() - new Date(a.updated_at || a.created_at).getTime());
+  const mevcutBekleyenIptal = kullaniciTalepleri.find(talep => talep.talep_tipi === 'iptal' && talep.durum === 'bekliyor');
+  const aktifTalep = kullaniciTalepleri.find(talep => (talep.talep_tipi || 'abonelik') === 'abonelik' && talep.durum === 'onaylandi');
+
+  if (mevcutBekleyenIptal) return mevcutBekleyenIptal;
+  if (!Boolean(user.premium_aktif) && !aktifTalep) {
+    throw new Error('Iptal edilebilecek aktif premium uyeliginiz bulunmuyor.');
+  }
+
+  const now = new Date().toISOString();
+  const talep: PremiumTalep = {
+    id: `pt-cancel-${Date.now()}`,
+    firma_id: aktifTalep?.firma_id || buildFirmaIdForUser(user),
+    user_id: authUser?.id || `mock-id-${user.email}`,
+    user_email: user.email,
+    talep_eden: user.name || user.adSoyad || user.email,
+    firma_adi: user.firmaAdi || aktifTalep?.firma_adi || 'Firma bilgisi yok',
+    paket_turu: (user.premium_paket || aktifTalep?.paket_turu || 'premium_bundle') as PremiumPaket,
+    talep_tipi: 'iptal',
+    durum: 'bekliyor',
+    created_at: now,
+  };
+
   writeLocalJson(PREMIUM_TALEPLER_KEY, [talep, ...talepler]);
   return talep;
 };
@@ -371,29 +472,43 @@ const updateLocalPremiumTalep = (talepId: string, durum: TalepDurum, redNedeni?:
 
   if (!updatedTalep) throw new Error('Premium talebi bulunamadi.');
   writeLocalJson(PREMIUM_TALEPLER_KEY, next);
-  setLocalUserPremium(updatedTalep, durum === 'onaylandi');
-  setLocalPremiumErisimler(updatedTalep, durum === 'onaylandi');
-  return updatedTalep;
+  const savedTalep = updatedTalep as PremiumTalep;
+  const isIptalTalebi = savedTalep.talep_tipi === 'iptal';
+  if (durum === 'onaylandi') {
+    setLocalUserPremium(savedTalep, !isIptalTalebi);
+    setLocalPremiumErisimler(savedTalep, !isIptalTalebi);
+  } else if (durum === 'reddedildi' && !isIptalTalebi) {
+    setLocalUserPremium(savedTalep, false);
+    setLocalPremiumErisimler(savedTalep, false);
+  }
+  return savedTalep;
 };
 
 export const getPremiumHesapDurumu = async (): Promise<PremiumHesapDurumu> => {
   const authUser = await getCurrentUser();
   const mockUser = getCurrentMockUser();
   const user = mockUser || authUser;
-  if (!user) return { hasPremium: false, talepDurum: 'yok', talep: null, paket: null };
+  if (!user) return { hasPremium: false, talepDurum: 'yok', talep: null, paket: null, iptalTalebiBekliyor: false };
 
   const userKey = getUserKey(user);
   const talepler = getLocalPremiumTalepler()
     .filter(talep => getTalepUserKey(talep) === userKey || talep.user_id === authUser?.id)
     .sort((a, b) => new Date(b.updated_at || b.created_at).getTime() - new Date(a.updated_at || a.created_at).getTime());
   const latest = talepler[0] || null;
-  const hasPremium = Boolean(user.premium_aktif) || latest?.durum === 'onaylandi';
+  const latestAbonelik = talepler.find(talep => (talep.talep_tipi || 'abonelik') === 'abonelik');
+  const onayliAbonelik = talepler.find(talep => (talep.talep_tipi || 'abonelik') === 'abonelik' && talep.durum === 'onaylandi');
+  const onayliIptal = talepler.find(talep => talep.talep_tipi === 'iptal' && talep.durum === 'onaylandi');
+  const iptalTalebiBekliyor = talepler.some(talep => talep.talep_tipi === 'iptal' && talep.durum === 'bekliyor');
+  const abonelikTarihi = onayliAbonelik ? new Date(onayliAbonelik.updated_at || onayliAbonelik.created_at).getTime() : 0;
+  const iptalTarihi = onayliIptal ? new Date(onayliIptal.updated_at || onayliIptal.created_at).getTime() : 0;
+  const hasPremium = (Boolean(user.premium_aktif) || Boolean(onayliAbonelik)) && iptalTarihi <= abonelikTarihi;
 
   return {
     hasPremium,
-    talepDurum: hasPremium ? 'onaylandi' : latest?.durum || 'yok',
-    talep: latest,
-    paket: (user.premium_paket || latest?.paket_turu || null) as PremiumPaket | null,
+    talepDurum: hasPremium ? 'onaylandi' : latestAbonelik?.durum || latest?.durum || 'yok',
+    talep: iptalTalebiBekliyor ? talepler.find(talep => talep.talep_tipi === 'iptal' && talep.durum === 'bekliyor') || latest : latestAbonelik || latest,
+    paket: (user.premium_paket || latestAbonelik?.paket_turu || latest?.paket_turu || null) as PremiumPaket | null,
+    iptalTalebiBekliyor,
   };
 };
 
@@ -409,20 +524,58 @@ async function tryOrMock<T>(apiFn: () => Promise<T>, mockData: T): Promise<T> {
 }
 
 async function postGeminiFirmaOcr(file: File): Promise<ApiResponse<OcrSonucu>> {
+  const startedAt = performance.now();
   const formData = new FormData();
   formData.append('file', file);
 
-  const response = await fetch('/api/gemini/firma-ocr', {
-    method: 'POST',
-    body: formData,
-  });
-  const payload = await response.json();
+  try {
+    const response = await fetch('/api/gemini/firma-ocr', {
+      method: 'POST',
+      body: formData,
+    });
+    const payload = await response.json();
 
-  if (!response.ok) {
-    throw new Error(payload?.message || 'Gemini belge analizi basarisiz oldu.');
+    addAICagriLog({
+      firma_id: 'ocr-document',
+      cagri_turu: 'ocr',
+      prompt_uzunlugu: file.size,
+      yanit_suresi_ms: Math.round(performance.now() - startedAt),
+      basarili: response.ok,
+      hata_mesaji: response.ok ? null : payload?.message || 'Gemini belge analizi basarisiz oldu.',
+    });
+
+    if (!response.ok) {
+      addErrorLog({
+        endpoint: '/api/gemini/firma-ocr',
+        kod: response.status,
+        tur: response.statusText || 'GeminiOcrError',
+        kullanici: getLoggedInEmail() || 'anon',
+        stack: payload?.message || 'Gemini belge analizi basarisiz oldu.',
+      });
+      throw new Error(payload?.message || 'Gemini belge analizi basarisiz oldu.');
+    }
+
+    return payload as ApiResponse<OcrSonucu>;
+  } catch (error) {
+    if (!(error instanceof Error && error.message.includes('Gemini belge analizi'))) {
+      addAICagriLog({
+        firma_id: 'ocr-document',
+        cagri_turu: 'ocr',
+        prompt_uzunlugu: file.size,
+        yanit_suresi_ms: Math.round(performance.now() - startedAt),
+        basarili: false,
+        hata_mesaji: error instanceof Error ? error.message : 'Bilinmeyen OCR hatasi',
+      });
+      addErrorLog({
+        endpoint: '/api/gemini/firma-ocr',
+        kod: 0,
+        tur: 'FetchError',
+        kullanici: getLoggedInEmail() || 'anon',
+        stack: error instanceof Error ? `${error.name}: ${error.message}\n${error.stack || ''}` : String(error),
+      });
+    }
+    throw error;
   }
-
-  return payload as ApiResponse<OcrSonucu>;
 }
 
 // ──────────────────────────────────────────────
@@ -722,24 +875,78 @@ export const premiumSatinAl = async (paketTuru: PremiumPaket): Promise<ApiRespon
   }
 };
 
-export const generateUserFinansalAIAnaliz = async (finansalVeriler: Record<string, unknown>): Promise<ApiResponse<{ analiz: string }>> => {
-  const response = await fetch('/api/gemini/finansal-analiz', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ finansalVeriler }),
-  });
-  const payload = await response.json();
-
-  if (!response.ok) {
-    throw new Error(payload?.message || 'AI finansal analiz olusturulamadi.');
-  }
-
+export const premiumIptalTalepEt = async (): Promise<ApiResponse<void>> => {
   const email = getLoggedInEmail() || 'anon';
-  const cache = readLocalJson<Record<string, string>>(AI_ANALIZ_KEY, {});
-  writeLocalJson(AI_ANALIZ_KEY, { ...cache, [email]: payload.data.analiz });
-  addSystemLog({ kullanici: email, islem_turu: 'create', tablo: 'ai_analizler', kayit_id: email, eski_deger: null, yeni_deger: { islem: 'ai_finansal_analiz', uzunluk: payload.data.analiz.length } });
+  try {
+    const { data } = await apiClient.post<ApiResponse<void>>('/premium/iptal-talebi');
+    await createLocalPremiumIptalTalebi();
+    addSystemLog({ kullanici: email, islem_turu: 'premium', tablo: 'premium_talepler', kayit_id: email, eski_deger: null, yeni_deger: { islem: 'iptal_talebi' } });
+    return data;
+  } catch {
+    await createLocalPremiumIptalTalebi();
+    addSystemLog({ kullanici: email, islem_turu: 'premium', tablo: 'premium_talepler', kayit_id: email, eski_deger: null, yeni_deger: { islem: 'iptal_talebi' } });
+    return { data: undefined as unknown as void, message: 'Iptal talebi gonderildi' };
+  }
+};
 
-  return payload as ApiResponse<{ analiz: string }>;
+export const generateUserFinansalAIAnaliz = async (finansalVeriler: Record<string, unknown>): Promise<ApiResponse<{ analiz: string }>> => {
+  const startedAt = performance.now();
+  const requestBody = JSON.stringify({ finansalVeriler });
+  const email = getLoggedInEmail() || 'anon';
+
+  try {
+    const response = await fetch('/api/gemini/finansal-analiz', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: requestBody,
+    });
+    const payload = await response.json();
+
+    addAICagriLog({
+      firma_id: String(finansalVeriler.firma_id || finansalVeriler.firmaAdi || email),
+      cagri_turu: 'analiz',
+      prompt_uzunlugu: requestBody.length,
+      yanit_suresi_ms: Math.round(performance.now() - startedAt),
+      basarili: response.ok,
+      hata_mesaji: response.ok ? null : payload?.message || 'AI finansal analiz olusturulamadi.',
+    });
+
+    if (!response.ok) {
+      addErrorLog({
+        endpoint: '/api/gemini/finansal-analiz',
+        kod: response.status,
+        tur: response.statusText || 'GeminiAnalizError',
+        kullanici: email,
+        stack: payload?.message || 'AI finansal analiz olusturulamadi.',
+      });
+      throw new Error(payload?.message || 'AI finansal analiz olusturulamadi.');
+    }
+
+    const cache = readLocalJson<Record<string, string>>(AI_ANALIZ_KEY, {});
+    writeLocalJson(AI_ANALIZ_KEY, { ...cache, [email]: payload.data.analiz });
+    addSystemLog({ kullanici: email, islem_turu: 'create', tablo: 'ai_analizler', kayit_id: email, eski_deger: null, yeni_deger: { islem: 'ai_finansal_analiz', uzunluk: payload.data.analiz.length } });
+
+    return payload as ApiResponse<{ analiz: string }>;
+  } catch (error) {
+    if (!(error instanceof Error && error.message.includes('AI finansal analiz'))) {
+      addAICagriLog({
+        firma_id: String(finansalVeriler.firma_id || finansalVeriler.firmaAdi || email),
+        cagri_turu: 'analiz',
+        prompt_uzunlugu: requestBody.length,
+        yanit_suresi_ms: Math.round(performance.now() - startedAt),
+        basarili: false,
+        hata_mesaji: error instanceof Error ? error.message : 'Bilinmeyen AI analiz hatasi',
+      });
+      addErrorLog({
+        endpoint: '/api/gemini/finansal-analiz',
+        kod: 0,
+        tur: 'FetchError',
+        kullanici: email,
+        stack: error instanceof Error ? `${error.name}: ${error.message}\n${error.stack || ''}` : String(error),
+      });
+    }
+    throw error;
+  }
 };
 
 export const getKayitliAIAnaliz = async (): Promise<string | null> => {
@@ -862,21 +1069,13 @@ export const getIslemLoglari = async (filters?: LogFilters): Promise<PaginatedRe
 };
 
 export const getAICagriLoglari = async (filters?: LogFilters): Promise<PaginatedResponse<AICagriLog>> => {
-  return tryOrMock(
-    async () => { const { data } = await apiClient.get<PaginatedResponse<AICagriLog>>('/log/ai-cagrilar', { params: filters }); return data; },
-    { data: [
-      { id: 'ai1', firma_id: '1', cagri_turu: 'ocr' as const, prompt_uzunlugu: 450, yanit_suresi_ms: 2300, basarili: true, hata_mesaji: null, created_at: new Date(Date.now() - 3600000).toISOString() },
-      { id: 'ai2', firma_id: '1', cagri_turu: 'analiz' as const, prompt_uzunlugu: 1200, yanit_suresi_ms: 5600, basarili: true, hata_mesaji: null, created_at: new Date(Date.now() - 7200000).toISOString() },
-      { id: 'ai3', firma_id: '2', cagri_turu: 'pptx' as const, prompt_uzunlugu: 800, yanit_suresi_ms: 8900, basarili: false, hata_mesaji: 'Timeout exceeded', created_at: new Date(Date.now() - 86400000).toISOString() },
-    ], total: 3, page: 1, per_page: 10 }
-  );
+  const localLogs = getLocalAICagriLoglari();
+  return { data: localLogs, total: localLogs.length, page: 1, per_page: filters?.limit || 10 };
 };
 
-export const getErrorLogs = async (filters?: LogFilters): Promise<PaginatedResponse<IslemLog>> => {
-  return tryOrMock(
-    async () => { const { data } = await apiClient.get<PaginatedResponse<IslemLog>>('/log/hatalar', { params: filters }); return data; },
-    { data: [], total: 0, page: 1, per_page: 10 }
-  );
+export const getErrorLogs = async (_filters?: LogFilters): Promise<PaginatedResponse<LocalErrorLog>> => {
+  const localLogs = getLocalErrorLogs();
+  return { data: localLogs, total: localLogs.length, page: 1, per_page: 10 };
 };
 
 // ──────────────────────────────────────────────

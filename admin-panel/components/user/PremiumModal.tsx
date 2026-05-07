@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { usePremiumModal } from '@/context/PremiumModalContext';
-import { getPremiumHesapDurumu, premiumSatinAl } from '@/lib/api';
+import { getPremiumHesapDurumu, premiumIptalTalepEt, premiumSatinAl } from '@/lib/api';
 
 type PaketId = 'temel_analiz' | 'uzman_gorusu' | 'premium_bundle';
 
@@ -40,6 +40,7 @@ export function PremiumModal() {
 
   const [talepDurum, setTalepDurum] = useState<'yok' | 'bekliyor' | 'onaylandi' | 'reddedildi'>('yok');
   const [sonTalepTarihi, setSonTalepTarihi] = useState<string | null>(null);
+  const [iptalTalebiBekliyor, setIptalTalebiBekliyor] = useState(false);
 
   useEffect(() => {
     if (defaultPaket) setSecili(defaultPaket);
@@ -52,6 +53,7 @@ export function PremiumModal() {
       const durum = await getPremiumHesapDurumu();
       setTalepDurum(durum.talepDurum);
       setSonTalepTarihi(durum.talep?.created_at || null);
+      setIptalTalebiBekliyor(durum.iptalTalebiBekliyor);
       if (durum.paket) setSecili(durum.paket);
     };
 
@@ -81,6 +83,24 @@ export function PremiumModal() {
     }
   };
 
+  const handleIptalTalebi = async () => {
+    setLoading(true);
+    try {
+      await premiumIptalTalepEt();
+      setIptalTalebiBekliyor(true);
+      setSonTalepTarihi(new Date().toISOString());
+      window.dispatchEvent(new Event('premium-data-changed'));
+      toast.success('Iptal talebiniz iletildi!', {
+        description: 'Admin onayi sonrasinda premium erisiminiz kapatilacaktir.',
+        duration: 5000,
+      });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Iptal talebi gonderilemedi.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={(open) => { if (!open) { closeModal(); setSecili(null); } }}>
       <DialogContent className="sm:max-w-3xl p-0 overflow-hidden">
@@ -97,7 +117,7 @@ export function PremiumModal() {
         <div className="p-6 space-y-6">
 
           {/* ONAY BEKLENİYOR DURUMU */}
-          {talepDurum === 'bekliyor' && (
+          {talepDurum === 'bekliyor' && !iptalTalebiBekliyor && (
             <div className="text-center py-8 space-y-4">
               <div className="w-20 h-20 mx-auto bg-amber-100 rounded-full flex items-center justify-center"><Clock className="w-10 h-10 text-amber-600 animate-pulse" /></div>
               <h3 className="text-2xl font-bold">Talebiniz İnceleniyor</h3>
@@ -106,12 +126,29 @@ export function PremiumModal() {
             </div>
           )}
 
+          {iptalTalebiBekliyor && (
+            <div className="text-center py-8 space-y-4">
+              <div className="w-20 h-20 mx-auto bg-amber-100 rounded-full flex items-center justify-center"><Clock className="w-10 h-10 text-amber-600 animate-pulse" /></div>
+              <h3 className="text-2xl font-bold">Iptal Talebiniz Inceleniyor</h3>
+              <p className="text-slate-500 max-w-sm mx-auto">Premium uyelik iptal talebiniz admin onayi bekliyor. Onaylanana kadar erisiminiz aktif kalir.</p>
+              {sonTalepTarihi && <p className="text-xs text-slate-400">Son talep: {new Date(sonTalepTarihi).toLocaleString('tr-TR')}</p>}
+            </div>
+          )}
+
           {/* ONAYLANMIŞ DURUM */}
-          {talepDurum === 'onaylandi' && (
+          {talepDurum === 'onaylandi' && !iptalTalebiBekliyor && (
             <div className="text-center py-8 space-y-4">
               <div className="w-20 h-20 mx-auto bg-emerald-100 rounded-full flex items-center justify-center"><CheckCircle2 className="w-10 h-10 text-emerald-600" /></div>
               <h3 className="text-2xl font-bold text-emerald-700">Erişiminiz Aktif ✓</h3>
               <p className="text-slate-500">Bu özelliğe zaten erişiminiz bulunmaktadır.</p>
+              <Button
+                variant="outline"
+                onClick={handleIptalTalebi}
+                disabled={loading}
+                className="border-red-200 text-red-600 hover:bg-red-50"
+              >
+                {loading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Iptal talebi gonderiliyor...</> : 'Premium Iptal Talebi Gonder'}
+              </Button>
             </div>
           )}
 

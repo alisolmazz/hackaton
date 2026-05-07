@@ -152,7 +152,6 @@ export default function FirmaBilgileriPage() {
       <div className="flex flex-col gap-2">
         <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white flex items-center gap-3">
           {durum === 'yok' ? 'Şirketinizi Dijitale Taşıyın' : 'Kurumsal Profil'}
-          {durum === 'yok' && <span className="text-2xl">🚀</span>}
         </h1>
         <p className="text-slate-500 dark:text-slate-400 font-medium text-sm sm:text-base">
           {durum === 'yok' ? 'Pro Sicht algoritmalarının firmanızı analiz edebilmesi için resmi kayıtlarınızı oluşturun.' : 'Şirket verilerinizi ve yasal sözleşmelerinizi bu alandan yönetebilirsiniz.'}

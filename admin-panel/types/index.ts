@@ -3,6 +3,7 @@ export type SozlesmeTuru = 'rapor' | 'analiz' | 'sistem' | 'diger';
 export type TahsilatDurum = 'bekliyor' | 'odendi' | 'gecikti';
 export type ProjeDurum = 'devam' | 'bitti';
 export type PremiumPaket = 'temel_analiz' | 'uzman_gorusu' | 'premium_bundle';
+export type PremiumTalepTipi = 'abonelik' | 'iptal';
 export type TalepDurum = 'bekliyor' | 'onaylandi' | 'reddedildi';
 export type IslemTuru = 'create' | 'update' | 'delete' | 'login' | 'logout' | 'ocr' | 'premium';
 
@@ -105,6 +106,7 @@ export interface PremiumTalep {
   talep_eden?: string;
   firma_adi?: string;
   paket_turu: PremiumPaket;
+  talep_tipi?: PremiumTalepTipi;
   durum: TalepDurum;
   red_nedeni?: string;
   created_at: string;

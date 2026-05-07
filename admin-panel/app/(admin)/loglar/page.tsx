@@ -22,7 +22,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Label } from '@/components/ui/label';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Legend } from 'recharts';
 
-import { getSystemLogs, type SystemLog } from '@/lib/api';
+import { getAICagriLoglari, getErrorLogs, getSystemLogs, type LocalErrorLog, type SystemLog } from '@/lib/api';
+import type { AICagriLog } from '@/types';
 
 const AI_CHART_DATA = [
   { gun: 'Pzt', cagri: 120, basari: 98 },
@@ -53,8 +54,8 @@ function LoglarContent() {
 
   // Client-only: logları localStorage'dan oku (hydration mismatch önleme)
   const [islemLoglari, setIslemLoglari] = useState<SystemLog[]>([]);
-  const [aiLoglari, setAiLoglari] = useState<{id:number;zaman:string;firma:string;tur:string;sure:number;durum:string;promptUzunluk:number;hataMesaji?:string}[]>([]);
-  const [hataLoglari, setHataLoglari] = useState<{id:number;zaman:string;endpoint:string;kod:number;tur:string;kullanici:string;cozuldu:boolean;stack:string}[]>([]);
+  const [aiLoglari, setAiLoglari] = useState<AICagriLog[]>([]);
+  const [hataLoglari, setHataLoglari] = useState<LocalErrorLog[]>([]);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -70,17 +71,23 @@ function LoglarContent() {
       ];
       setIslemLoglari(seeds);
     }
+    /*
     setAiLoglari([
       { id: 1, zaman: new Date(Date.now() - 3600000).toISOString(), firma: 'TechNova', tur: 'ocr', sure: 1250, durum: 'basarili', promptUzunluk: 0 },
       { id: 2, zaman: new Date(Date.now() - 7200000).toISOString(), firma: 'Global Loj.', tur: 'analiz', sure: 4500, durum: 'basarili', promptUzunluk: 2500 },
       { id: 3, zaman: new Date(Date.now() - 86400000).toISOString(), firma: 'Apex Üretim', tur: 'pptx', sure: 8500, durum: 'hatali', promptUzunluk: 1200, hataMesaji: 'Timeout: OpenAI API yanıt vermedi.' },
       { id: 4, zaman: new Date(Date.now() - 150000).toISOString(), firma: 'Zirve E-Ticaret', tur: 'analiz', sure: 1800, durum: 'basarili', promptUzunluk: 3100 },
     ]);
+    */
+    getAICagriLoglari().then(response => setAiLoglari(response.data));
+    /*
     setHataLoglari([
       { id: 1, zaman: new Date(Date.now() - 1200000).toISOString(), endpoint: '/api/finansal/123', kod: 500, tur: 'InternalServerError', kullanici: 'ayse@pro.com', cozuldu: false, stack: 'Error: Cannot read properties of undefined (reading "net_kar")\n    at calculateFinans (api.js:45:12)' },
       { id: 2, zaman: new Date(Date.now() - 3400000).toISOString(), endpoint: '/api/admin/settings', kod: 403, tur: 'Forbidden', kullanici: 'user@pro.com', cozuldu: true, stack: 'Forbidden: Insufficient permissions.' },
       { id: 3, zaman: new Date(Date.now() - 5600000).toISOString(), endpoint: '/api/firmalar/999', kod: 404, tur: 'NotFound', kullanici: 'ahmet@pro.com', cozuldu: false, stack: 'NotFound: Kayıt bulunamadı.' },
     ]);
+    */
+    getErrorLogs().then(response => setHataLoglari(response.data));
     setMounted(true);
   }, []);
 
@@ -95,6 +102,21 @@ function LoglarContent() {
 
   const paginatedLogs = filteredIslemLoglari.slice((page - 1) * perPage, page * perPage);
   const totalPages = Math.ceil(filteredIslemLoglari.length / perPage);
+  const basariliAiSayisi = aiLoglari.filter(l => l.basarili).length;
+  const bugunkuAiSayisi = aiLoglari.filter(l => new Date(l.created_at).toDateString() === new Date().toDateString()).length;
+  const aiBasariOrani = aiLoglari.length ? Math.round((basariliAiSayisi / aiLoglari.length) * 1000) / 10 : 0;
+  const ortalamaAiSuresi = aiLoglari.length ? Math.round(aiLoglari.reduce((sum, l) => sum + l.yanit_suresi_ms, 0) / aiLoglari.length) : 0;
+  const aiChartData = Array.from({ length: 7 }).map((_, index) => {
+    const date = new Date();
+    date.setDate(date.getDate() - (6 - index));
+    const sameDayLogs = aiLoglari.filter(l => new Date(l.created_at).toDateString() === date.toDateString());
+    const successful = sameDayLogs.filter(l => l.basarili).length;
+    return {
+      gun: format(date, 'EEE', { locale: tr }),
+      cagri: sameDayLogs.length,
+      basari: sameDayLogs.length ? Math.round((successful / sameDayLogs.length) * 100) : 0,
+    };
+  });
 
   const setPage = (newPage: number) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -292,10 +314,10 @@ function LoglarContent() {
         <TabsContent value="ai" className="space-y-6 animate-in fade-in-50 duration-500">
           
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            <Card className="shadow-sm border-l-4 border-l-blue-500"><CardContent className="p-5"><p className="text-sm text-slate-500 font-medium">Toplam AI Çağrısı</p><p className="text-2xl font-bold mt-1">1,245</p></CardContent></Card>
-            <Card className="shadow-sm border-l-4 border-l-emerald-500"><CardContent className="p-5"><p className="text-sm text-slate-500 font-medium">Başarı Oranı</p><p className="text-2xl font-bold mt-1 text-emerald-600">%94.5</p></CardContent></Card>
-            <Card className="shadow-sm border-l-4 border-l-amber-500"><CardContent className="p-5"><p className="text-sm text-slate-500 font-medium">Ort. Yanıt Süresi</p><p className="text-2xl font-bold mt-1">2,450 <span className="text-sm font-normal text-slate-400">ms</span></p></CardContent></Card>
-            <Card className="shadow-sm border-l-4 border-l-purple-500"><CardContent className="p-5"><p className="text-sm text-slate-500 font-medium">Bugünkü Çağrı</p><p className="text-2xl font-bold mt-1 text-purple-600">84</p></CardContent></Card>
+            <Card className="shadow-sm border-l-4 border-l-blue-500"><CardContent className="p-5"><p className="text-sm text-slate-500 font-medium">Toplam AI Cagrisi</p><p className="text-2xl font-bold mt-1">{aiLoglari.length.toLocaleString('tr-TR')}</p></CardContent></Card>
+            <Card className="shadow-sm border-l-4 border-l-emerald-500"><CardContent className="p-5"><p className="text-sm text-slate-500 font-medium">Basari Orani</p><p className="text-2xl font-bold mt-1 text-emerald-600">%{aiBasariOrani}</p></CardContent></Card>
+            <Card className="shadow-sm border-l-4 border-l-amber-500"><CardContent className="p-5"><p className="text-sm text-slate-500 font-medium">Ort. Yanit Suresi</p><p className="text-2xl font-bold mt-1">{ortalamaAiSuresi.toLocaleString('tr-TR')} <span className="text-sm font-normal text-slate-400">ms</span></p></CardContent></Card>
+            <Card className="shadow-sm border-l-4 border-l-purple-500"><CardContent className="p-5"><p className="text-sm text-slate-500 font-medium">Bugunku Cagri</p><p className="text-2xl font-bold mt-1 text-purple-600">{bugunkuAiSayisi}</p></CardContent></Card>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -315,20 +337,20 @@ function LoglarContent() {
                     </TableHeader>
                     <TableBody>
                       {aiLoglari.map(l => (
-                        <TableRow key={l.id} className={l.durum === 'hatali' ? 'bg-red-50/50 dark:bg-red-900/10' : ''}>
-                          <TableCell className="pl-6 text-sm">{format(new Date(l.zaman), 'HH:mm:ss')}</TableCell>
-                          <TableCell className="font-medium">{l.firma}</TableCell>
-                          <TableCell>{getAiBadge(l.tur)}</TableCell>
+                        <TableRow key={l.id} className={!l.basarili ? 'bg-red-50/50 dark:bg-red-900/10' : ''}>
+                          <TableCell className="pl-6 text-sm">{format(new Date(l.created_at), 'HH:mm:ss')}</TableCell>
+                          <TableCell className="font-medium">{l.firma_id}</TableCell>
+                          <TableCell>{getAiBadge(l.cagri_turu)}</TableCell>
                           <TableCell>
-                            <span className={`font-mono text-xs font-bold ${l.sure < 2000 ? 'text-emerald-600' : l.sure < 5000 ? 'text-amber-600' : 'text-red-600'}`}>{l.sure}ms</span>
+                            <span className={`font-mono text-xs font-bold ${l.yanit_suresi_ms < 2000 ? 'text-emerald-600' : l.yanit_suresi_ms < 5000 ? 'text-amber-600' : 'text-red-600'}`}>{l.yanit_suresi_ms}ms</span>
                           </TableCell>
                           <TableCell>
-                            {l.durum === 'basarili' ? (
+                            {l.basarili ? (
                               <Badge variant="outline" className="border-none bg-emerald-100 text-emerald-800 shadow-none"><CheckCircle2 className="w-3 h-3 mr-1"/> Başarılı</Badge>
                             ) : (
                               <div className="flex items-center gap-2 group cursor-help">
                                 <Badge variant="outline" className="border-none bg-red-100 text-red-800 shadow-none"><XCircle className="w-3 h-3 mr-1"/> Hatalı</Badge>
-                                <span className="hidden group-hover:block text-xs text-red-600">{l.hataMesaji}</span>
+                                <span className="hidden group-hover:block text-xs text-red-600">{l.hata_mesaji}</span>
                               </div>
                             )}
                           </TableCell>
@@ -345,7 +367,7 @@ function LoglarContent() {
                 <CardHeader className="border-b border-slate-100 dark:border-slate-800 pb-3"><CardTitle className="text-lg">Performans Trendi (7 Gün)</CardTitle></CardHeader>
                 <CardContent className="pt-6 flex-1 min-h-[300px]">
                   <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={AI_CHART_DATA}>
+                    <LineChart data={aiChartData}>
                       <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.3} />
                       <XAxis dataKey="gun" axisLine={false} tickLine={false} tick={{ fontSize: 12 }} />
                       <YAxis yAxisId="left" axisLine={false} tickLine={false} tick={{ fontSize: 12 }} />

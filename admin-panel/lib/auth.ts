@@ -1,5 +1,32 @@
 import { User } from '@/types';
 import { addSystemLog } from '@/lib/api';
+import CryptoJS from 'crypto-js';
+
+const MOCK_USERS_KEY = 'mock_users';
+const ENCRYPTION_SECRET = process.env.NEXT_PUBLIC_ENCRYPTION_KEY || 'prosicht-hackathon-secure-key-2024';
+const DEFAULT_ADMIN_USER = [
+  { email: 'admin@prosicht.com', sifre: 'admin123', name: 'Admin Kullanici', role: 'admin' },
+];
+
+const readMockUsers = (): any[] => {
+  if (typeof window === 'undefined') return [];
+  const raw = localStorage.getItem(MOCK_USERS_KEY);
+  if (!raw) return [];
+
+  try {
+    const bytes = CryptoJS.AES.decrypt(raw, ENCRYPTION_SECRET);
+    const decryptedData = bytes.toString(CryptoJS.enc.Utf8);
+    return JSON.parse(decryptedData || raw);
+  } catch {
+    return [];
+  }
+};
+
+const writeMockUsers = (users: any[]) => {
+  if (typeof window === 'undefined') return;
+  const encryptedData = CryptoJS.AES.encrypt(JSON.stringify(users), ENCRYPTION_SECRET).toString();
+  localStorage.setItem(MOCK_USERS_KEY, encryptedData);
+};
 
 // Mock function to get token
 export const getToken = async (): Promise<string | null> => {
@@ -14,12 +41,10 @@ export const getToken = async (): Promise<string | null> => {
 // LocalStorage kullanarak mini bir veritabanı simülasyonu başlatır
 const initDB = () => {
   if (typeof window === 'undefined') return;
-  const users = localStorage.getItem('mock_users');
+  const users = readMockUsers();
   // Eğer veritabanı boşsa Admin'i içine ekle
-  if (!users) {
-    localStorage.setItem('mock_users', JSON.stringify([
-      { email: 'admin@prosicht.com', sifre: 'admin123', name: 'Admin Kullanıcı', role: 'admin' }
-    ]));
+  if (!users.length) {
+    writeMockUsers(DEFAULT_ADMIN_USER);
   }
 }
 
@@ -33,7 +58,7 @@ export const getCurrentUser = async (): Promise<User | null> => {
     const parts = value.split(`; sb-email=`);
     if (parts.length === 2) {
       const email = decodeURIComponent(parts.pop()?.split(';').shift() || '');
-      const users = JSON.parse(localStorage.getItem('mock_users') || '[]');
+      const users = readMockUsers();
       const user = users.find((u: any) => u.email === email);
       if (user) {
         return {
@@ -61,7 +86,7 @@ export const login = async (email: string, sifre: string) => {
   initDB(); // Veritabanını kontrol et
   await new Promise(resolve => setTimeout(resolve, 800)); // Ağ yüklenme simülasyonu
 
-  const users = JSON.parse(localStorage.getItem('mock_users') || '[]');
+  const users = readMockUsers();
   const user = users.find((u: any) => u.email === email && u.sifre === sifre);
 
   // Eğer eşleşme yoksa hata fırlat
@@ -92,7 +117,7 @@ export const register = async (firmaAdi: string, adSoyad: string, email: string,
     throw new Error('Şifre en az 6 karakter olmalıdır.');
   }
 
-  const users = JSON.parse(localStorage.getItem('mock_users') || '[]');
+  const users = readMockUsers();
   
   // Bu e-posta daha önce kayıtlı mı diye bak
   if (users.find((u: any) => u.email === email)) {
@@ -111,7 +136,7 @@ export const register = async (firmaAdi: string, adSoyad: string, email: string,
     premium_paket: null,
   });
 
-  localStorage.setItem('mock_users', JSON.stringify(users));
+  writeMockUsers(users);
 
   // Log kaydı
   addSystemLog({ kullanici: email, islem_turu: 'create', tablo: 'kullanicilar', kayit_id: email, eski_deger: null, yeni_deger: { firmaAdi, adSoyad, role: 'user' } });
